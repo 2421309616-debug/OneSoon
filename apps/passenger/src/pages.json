@@ -1,0 +1,30 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/home",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "万顺",
+        "backgroundColor": "#E8EAED",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的",
+        "backgroundColor": "#F2F3F5"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "万顺",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#FFFFFF",
+    "backgroundTextStyle": "dark",
+    "rpxCalcMaxDeviceWidth": 375,
+    "rpxCalcBaseDeviceWidth": 375
+  }
+}
