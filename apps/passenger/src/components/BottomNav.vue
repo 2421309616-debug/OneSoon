@@ -56,11 +56,9 @@ function go(url: string) {
   bottom: 0;
   display: flex;
   width: 100%;
-  max-width: 375px;
-  margin: 0 auto;
-  background: #ffffff;
+  background: var(--app-color-surface);
   border-top: 1px solid #ece7e7;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 0 var(--app-safe-right) var(--app-safe-bottom) var(--app-safe-left);
   box-sizing: border-box;
 }
 
@@ -70,10 +68,11 @@ function go(url: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6rpx;
-  min-height: 100rpx;
+  gap: 3px;
+  height: var(--app-nav-item-height);
+  min-width: 0;
   margin: 0;
-  padding: 8rpx 0;
+  padding: 4px 0;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -95,13 +94,13 @@ function go(url: string) {
 }
 
 .nav-icon {
-  width: 48rpx;
-  height: 48rpx;
+  width: 24px;
+  height: 24px;
 }
 
 .nav-label {
   color: #3c4149;
-  font-size: 24rpx;
+  font-size: var(--app-font-small);
   font-weight: 500;
 }
 

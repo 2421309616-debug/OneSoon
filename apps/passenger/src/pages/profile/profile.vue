@@ -9,9 +9,9 @@ const entries = [
 </script>
 
 <template>
-  <view class="screen">
-    <view class="sheet">
-      <view class="card profile-card">
+  <view class="app-page">
+    <view class="sheet app-content app-content--with-nav">
+      <view class="app-card profile-card">
         <view class="avatar" aria-hidden="true">
           <text class="avatar-text">万</text>
         </view>
@@ -19,7 +19,7 @@ const entries = [
         <text class="en">OneSoon</text>
       </view>
 
-      <view class="card entry-card" aria-label="功能入口">
+      <view class="app-card entry-card" aria-label="功能入口">
         <button
           v-for="item in entries"
           :key="item.id"
@@ -37,33 +37,17 @@ const entries = [
 </template>
 
 <style scoped>
-.screen {
-  min-height: 100vh;
-  min-height: 100dvh;
-  max-width: 375px;
-  margin: 0 auto;
-  background: #f2f3f5;
-  box-sizing: border-box;
-}
-
 .sheet {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
-  padding: calc(24rpx + env(safe-area-inset-top)) 16rpx calc(132rpx + env(safe-area-inset-bottom));
-  box-sizing: border-box;
-}
-
-.card {
-  border-radius: 24rpx;
-  background: #ffffff;
+  gap: var(--app-gap);
 }
 
 .profile-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48rpx 28rpx 40rpx;
+  padding: 24px var(--app-card-padding) 20px;
 }
 
 .avatar {
@@ -86,7 +70,7 @@ const entries = [
 .name {
   margin-top: 28rpx;
   color: #1a1a1a;
-  font-size: 40rpx;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
 }
@@ -94,7 +78,7 @@ const entries = [
 .en {
   margin-top: 8rpx;
   color: #3c4149;
-  font-size: 28rpx;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.3;
   letter-spacing: 0.04em;
@@ -146,7 +130,7 @@ const entries = [
 .entry-name {
   max-width: 100%;
   color: #1a1a1a;
-  font-size: 24rpx;
+  font-size: var(--app-font-small);
   font-weight: 500;
 }
 </style>
