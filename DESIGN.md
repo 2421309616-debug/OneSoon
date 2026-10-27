@@ -6,13 +6,13 @@
 
 - 红 `#D0121A`
 - 页面 `#FFFFFF`
-- 桌面两侧底 `#F2F2F2`
+- 全局页面底 `#F2F3F5`
 - 正文 `#1A1A1A`
 - 次要文字 `#3C4149`
 - 地图预留 `#E8EAED`
 - 分割线 `#ECE7E7`
 - 字体：PingFang SC、Noto Sans SC、Microsoft YaHei
-- 页面最大宽度 375px
+- 页面始终铺满窗口；手机、平板、桌面断点及安全区规则统一维护在 `apps/passenger/src/styles/layout.css`，参见 `docs/responsive-layout.md`
 
 ## Home
 

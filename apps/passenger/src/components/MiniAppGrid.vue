@@ -31,9 +31,8 @@ function openApp(app: MiniAppEntry) {
 
 <style scoped>
 .apps {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(var(--app-shortcut-columns), minmax(0, 1fr));
 }
 
 .cell {
@@ -42,9 +41,9 @@ function openApp(app: MiniAppEntry) {
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  flex: 0 0 25%;
-  width: 25%;
-  min-height: 128rpx;
+  min-width: 0;
+  width: 100%;
+  min-height: 64px;
   box-sizing: border-box;
   margin: 0;
   padding: 8rpx 0 16rpx;
@@ -77,7 +76,8 @@ function openApp(app: MiniAppEntry) {
   max-width: 100%;
   padding: 0 4rpx;
   color: #1a1a1a;
-  font-size: 24rpx;
+  font-size: var(--app-font-small);
+  overflow-wrap: anywhere;
   text-align: center;
 }
 

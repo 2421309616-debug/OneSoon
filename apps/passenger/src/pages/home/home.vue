@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getCurrentInstance, nextTick, ref } from "vue";
+import { getCurrentInstance, nextTick, onUnmounted, ref } from "vue";
 import { onReady } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
 import MiniAppGrid from "@/components/MiniAppGrid.vue";
@@ -32,6 +32,58 @@ const hotels = [
 let startY = 0;
 let startOffset = 0;
 let moved = false;
+let disposed = false;
+let flowLayout = false;
+let wheelTimer = 0;
+let measurementVersion = 0;
+let followingCard = false;
+let sheetElement: HTMLElement | null = null;
+let removePointerListeners: (() => void) | undefined;
+const animationFrames = new Set<number>();
+
+function frame(callback: () => void) {
+  const id = requestAnimationFrame(() => {
+    animationFrames.delete(id);
+    if (!disposed) callback();
+  });
+  animationFrames.add(id);
+}
+
+function cancelFrames() {
+  animationFrames.forEach((id) => cancelAnimationFrame(id));
+  animationFrames.clear();
+  followingCard = false;
+}
+
+function isFlowLayout() {
+  return !!sheetElement && getComputedStyle(sheetElement).position !== "absolute";
+}
+
+function stopGesture() {
+  removePointerListeners?.();
+  removePointerListeners = undefined;
+  window.clearTimeout(wheelTimer);
+  dragging.value = false;
+  moved = false;
+}
+
+function resetFlowLayout() {
+  stopGesture();
+  flowLayout = true;
+  offset.value = 0;
+  minOffset.value = 0;
+  restOffset.value = 0;
+  maxOffset.value = 0;
+  cardShift.value = 0;
+  placed.value = true;
+  settled.value = true;
+}
+
+function isInteractive(target: EventTarget | null) {
+  return target instanceof Element && !!target.closest(
+    "input, textarea, select, button, a, [role='button'], [contenteditable='true'], uni-input, uni-textarea, uni-button",
+  );
+}
 
 function clamp(value: number) {
   return Math.min(maxOffset.value, Math.max(minOffset.value, value));
@@ -54,13 +106,16 @@ function placeCard(sheetY: number) {
   cardShift.value = Math.max(0, pinTop.value - natural);
 }
 
-let followingCard = false;
-
 function syncCard(followVisual: boolean) {
+  if (disposed || dragging.value) return;
+  if (isFlowLayout()) {
+    cardShift.value = 0;
+    return;
+  }
   placeCard(followVisual ? appliedOffset() : offset.value);
   if (!followVisual || Math.abs(appliedOffset() - offset.value) <= 0.5 || followingCard) return;
   followingCard = true;
-  requestAnimationFrame(() => {
+  frame(() => {
     followingCard = false;
     syncCard(true);
   });
@@ -68,14 +123,15 @@ function syncCard(followVisual: boolean) {
 
 function readPinTop() {
   const probe = document.createElement("div");
-  probe.style.cssText = "position:absolute;padding-top:env(safe-area-inset-top);visibility:hidden";
-  document.body.appendChild(probe);
+  probe.style.cssText = "position:absolute;padding-top:var(--app-safe-top, 0px);visibility:hidden";
+  const root = proxy?.$el;
+  (root instanceof HTMLElement ? root : document.body).appendChild(probe);
   pinTop.value = probe.clientHeight;
   probe.remove();
 }
 
 function appliedOffset() {
-  const sheet = document.querySelector(".below");
+  const sheet = sheetElement;
   if (!(sheet instanceof HTMLElement)) return offset.value;
   const raw = getComputedStyle(sheet).transform;
   if (!raw || raw === "none") return 0;
@@ -86,9 +142,17 @@ function appliedOffset() {
   return Number.isFinite(y) ? y : offset.value;
 }
 
-function measure(pinCollapsed: boolean) {
-  if (Math.abs(appliedOffset() - offset.value) > 1) {
-    requestAnimationFrame(() => measure(pinCollapsed));
+function measure(pinCollapsed: boolean, version: number, deadline = Date.now() + 450) {
+  if (disposed || version !== measurementVersion || !sheetElement) return;
+  // 矮屏使用文档滚动；先判断布局，避免等待被 CSS 禁用的 transform。
+  if (isFlowLayout()) {
+    resetFlowLayout();
+    return;
+  }
+  flowLayout = false;
+  const renderedOffset = appliedOffset();
+  if (Math.abs(renderedOffset - offset.value) > 1 && Date.now() < deadline) {
+    frame(() => measure(pinCollapsed, version, deadline));
     return;
   }
   uni
@@ -105,95 +169,120 @@ function measure(pinCollapsed: boolean) {
     .select(".nav")
     .boundingClientRect()
     .exec((res) => {
+      if (disposed || version !== measurementVersion) return;
+      if (isFlowLayout()) {
+        resetFlowLayout();
+        return;
+      }
       const screen = res[0];
       const sheet = res[1];
       const pickup = res[2];
       const apps = res[3];
       const nav = res[4];
       if (!screen || !sheet || !pickup || !apps || !nav) return;
-      const layoutTop = pickup.top - offset.value - cardShift.value;
-      const layoutBottom = pickup.bottom - offset.value - cardShift.value;
+      const layoutTop = pickup.top - renderedOffset - cardShift.value;
+      const layoutBottom = pickup.bottom - renderedOffset - cardShift.value;
       pickupLayoutTop.value = layoutTop;
-      const target = nav.top - 8;
+      const gap = sheetElement ? parseFloat(getComputedStyle(sheetElement).rowGap) || 0 : 0;
+      const target = nav.top - gap;
       const collapsed = target - layoutBottom;
-      const rest = offset.value + (target - apps.bottom);
-      const full = offset.value + (screen.bottom - sheet.bottom);
+      const rest = renderedOffset + (target - apps.bottom);
+      const full = renderedOffset + (screen.bottom - sheet.bottom);
       maxOffset.value = collapsed;
       restOffset.value = Math.min(collapsed, rest);
       minOffset.value = Math.min(restOffset.value, full);
       offset.value = pinCollapsed ? maxOffset.value : clamp(offset.value);
       placeCard(offset.value);
       placed.value = true;
-      requestAnimationFrame(() => {
-        settled.value = true;
+      frame(() => {
+        if (version === measurementVersion) settled.value = true;
       });
     });
 }
 
 function remeasure() {
-  measure(Math.abs(offset.value - maxOffset.value) < 1);
+  const pinCollapsed = flowLayout || Math.abs(offset.value - maxOffset.value) < 1;
+  const version = ++measurementVersion;
+  stopGesture();
+  cancelFrames();
+  settled.value = false;
+  readPinTop();
+  nextTick(() => measure(pinCollapsed, version));
 }
 
 onReady(() => {
   nextTick(() => {
-    readPinTop();
-    measure(true);
+    if (disposed) return;
     bindSheet();
+    readPinTop();
+    measure(true, ++measurementVersion);
     window.addEventListener("resize", remeasure);
   });
 });
 
 function bindSheet() {
-  const sheet = document.querySelector(".below");
-  if (!(sheet instanceof HTMLElement) || sheet.dataset.bound === "1") return;
-  sheet.dataset.bound = "1";
-
-  sheet.addEventListener("pointerdown", (event) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    try {
-      sheet.setPointerCapture(event.pointerId);
-    } catch {
-      // 某些浏览器在未按下的指针上会拒绝捕获，拖动仍由窗口事件接管。
-    }
-    begin(event.clientY);
-    const move = (ev: PointerEvent) => update(ev.clientY);
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      end();
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  });
-  sheet.addEventListener(
-    "wheel",
-    (event) => {
-      event.preventDefault();
-      const pixels = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
-      dragging.value = true;
-      offset.value = clamp(offset.value - pixels);
-      placeCard(offset.value);
-      window.clearTimeout(wheelTimer);
-      wheelTimer = window.setTimeout(() => {
-        dragging.value = false;
-        offset.value = settle(offset.value);
-        syncCard(true);
-      }, 140);
-    },
-    { passive: false },
-  );
+  const root = proxy?.$el;
+  if (!(root instanceof HTMLElement)) return;
+  sheetElement = root.querySelector<HTMLElement>(".below");
+  sheetElement?.addEventListener("pointerdown", onPointerDown);
+  sheetElement?.addEventListener("wheel", onWheel, { passive: false });
 }
 
-let wheelTimer = 0;
+function onPointerDown(event: PointerEvent) {
+  // 触屏使用模板中的 touch 事件，避免同一次手势重复执行。
+  if (event.pointerType === "touch" || !event.isPrimary || event.button !== 0 || isInteractive(event.target)) return;
+  if (!begin(event.clientY)) return;
+  const move = (ev: PointerEvent) => {
+    if (ev.pointerId === event.pointerId) update(ev.clientY);
+  };
+  const up = (ev: PointerEvent) => {
+    if (ev.pointerId !== event.pointerId) return;
+    removePointerListeners?.();
+    removePointerListeners = undefined;
+    end();
+  };
+  removePointerListeners = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+}
+
+function onWheel(event: WheelEvent) {
+  if (disposed || isFlowLayout() || isInteractive(event.target)) return;
+  event.preventDefault();
+  const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+  dragging.value = true;
+  offset.value = clamp(offset.value - event.deltaY * unit);
+  placeCard(offset.value);
+  window.clearTimeout(wheelTimer);
+  wheelTimer = window.setTimeout(() => {
+    if (disposed) return;
+    if (isFlowLayout()) {
+      resetFlowLayout();
+      return;
+    }
+    dragging.value = false;
+    offset.value = settle(offset.value);
+    syncCard(true);
+  }, 140);
+}
 
 function begin(y: number) {
+  if (disposed || isFlowLayout()) return false;
+  stopGesture();
   dragging.value = true;
   moved = false;
   startY = y;
   startOffset = offset.value;
+  return true;
 }
 
 function update(y: number) {
+  if (!dragging.value || disposed || isFlowLayout()) return;
   const dy = y - startY;
   if (!moved && Math.abs(dy) < 6) return;
   moved = true;
@@ -210,20 +299,32 @@ function end() {
 }
 
 function onTouchStart(event: TouchEvent) {
+  if (event.touches.length !== 1 || isInteractive(event.target)) return;
   begin(event.touches[0].clientY);
 }
 
 function onTouchMove(event: TouchEvent) {
-  update(event.touches[0].clientY);
+  if (event.touches.length === 1) update(event.touches[0].clientY);
 }
 
 function onTouchEnd() {
   end();
 }
+
+onUnmounted(() => {
+  disposed = true;
+  measurementVersion++;
+  stopGesture();
+  cancelFrames();
+  window.removeEventListener("resize", remeasure);
+  sheetElement?.removeEventListener("pointerdown", onPointerDown);
+  sheetElement?.removeEventListener("wheel", onWheel);
+  sheetElement = null;
+});
 </script>
 
 <template>
-  <view class="screen">
+  <view class="screen app-page app-page--viewport">
     <view class="stage">
       <view class="brand">
         <text class="brand-name">万顺</text>
@@ -233,7 +334,7 @@ function onTouchEnd() {
     </view>
 
     <view
-      class="below"
+      class="below app-content app-content--with-nav app-section-grid"
       :class="{ 'is-dragging': dragging, 'is-ready': placed, 'is-settled': settled }"
       :style="{ transform: `translateY(${offset}px)` }"
       @touchstart="onTouchStart"
@@ -242,7 +343,7 @@ function onTouchEnd() {
       @touchcancel="onTouchEnd"
     >
       <view
-        class="card pickup-card"
+        class="card app-card pickup-card"
         :class="{ 'is-pinned': cardShift > 0.5 }"
         :style="{ transform: `translateY(${cardShift}px)` }"
       >
@@ -279,11 +380,11 @@ function onTouchEnd() {
         </view>
       </view>
 
-      <view class="card card--apps">
+      <view class="card app-card card--apps">
         <MiniAppGrid />
       </view>
 
-      <view class="card card--block">
+      <view class="card app-card card--block">
         <text class="block-title" role="heading" aria-level="2">万顺开学季优惠</text>
         <view class="poster">
           <image
@@ -295,7 +396,7 @@ function onTouchEnd() {
         </view>
       </view>
 
-      <view class="card card--block">
+      <view class="card app-card card--block">
         <text class="block-title" role="heading" aria-level="2">万顺美食地</text>
         <view class="food-row">
           <view v-for="item in foods" :key="item.id" class="food">
@@ -309,7 +410,7 @@ function onTouchEnd() {
         </view>
       </view>
 
-      <view class="card card--block">
+      <view class="card app-card card--block">
         <text class="block-title" role="heading" aria-level="2">万顺优酒店</text>
         <view class="food-row">
           <view v-for="item in hotels" :key="item.id" class="food">
@@ -330,14 +431,7 @@ function onTouchEnd() {
 
 <style scoped>
 .screen {
-  position: relative;
-  height: 100vh;
-  height: 100dvh;
-  max-width: 375px;
-  margin: 0 auto;
-  overflow: hidden;
   background: #e8eaed;
-  box-sizing: border-box;
 }
 
 .stage {
@@ -348,8 +442,8 @@ function onTouchEnd() {
 .brand {
   position: absolute;
   z-index: 2;
-  top: calc(24rpx + env(safe-area-inset-top));
-  left: 32rpx;
+  top: calc(12px + var(--app-safe-top));
+  left: calc(var(--app-gutter) + 8px + var(--app-safe-left));
   display: flex;
   align-items: baseline;
   gap: 12rpx;
@@ -357,7 +451,7 @@ function onTouchEnd() {
 
 .brand-name {
   color: #d0121a;
-  font-size: 44rpx;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -365,12 +459,13 @@ function onTouchEnd() {
 
 .brand-en {
   color: #3c4149;
-  font-size: 24rpx;
+  font-size: var(--app-font-small);
   font-weight: 500;
   letter-spacing: 0.04em;
 }
 
 .map-slot {
+  width: 100%;
   height: 100%;
   background: #e8eaed;
 }
@@ -381,11 +476,8 @@ function onTouchEnd() {
   top: 0;
   left: 0;
   right: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  padding: 16rpx 16rpx calc(116rpx + env(safe-area-inset-bottom));
-  border-radius: 24rpx 24rpx 0 0;
+  padding-top: var(--app-gap);
+  border-radius: var(--app-card-radius) var(--app-card-radius) 0 0;
   background: #f2f3f5;
   box-sizing: border-box;
   visibility: hidden;
@@ -413,38 +505,38 @@ function onTouchEnd() {
 }
 
 .card {
-  padding: 28rpx 24rpx 8rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
+  padding: 14px var(--app-card-padding) 4px;
 }
 
 .card--apps {
-  padding: 16rpx 8rpx;
+  grid-column: 1 / -1;
+  padding: 8px 4px;
 }
 
 .pickup-card {
   position: relative;
   z-index: 5;
-  padding: 16rpx 24rpx 0;
+  grid-column: 1 / -1;
+  padding: 8px var(--app-card-padding) 0;
 }
 
 .pickup-card.is-pinned {
-  margin-right: -16rpx;
-  margin-left: -16rpx;
+  margin-right: calc(0px - var(--app-gutter));
+  margin-left: calc(0px - var(--app-gutter));
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   box-shadow: 0 8px 20px rgba(26, 26, 26, 0.12);
 }
 
 .card--block {
-  padding: 28rpx 24rpx 24rpx;
+  padding: 14px var(--app-card-padding) var(--app-card-padding);
 }
 
 .block-title {
   display: block;
   margin-bottom: 20rpx;
   color: #1a1a1a;
-  font-size: 32rpx;
+  font-size: var(--app-font-body);
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.02em;
@@ -495,7 +587,7 @@ function onTouchEnd() {
 .food-name {
   margin-top: 12rpx;
   color: #1a1a1a;
-  font-size: 24rpx;
+  font-size: var(--app-font-small);
   font-weight: 600;
   line-height: 1.3;
 }
@@ -503,14 +595,14 @@ function onTouchEnd() {
 .food-dish {
   margin-top: 4rpx;
   color: #3c4149;
-  font-size: 22rpx;
+  font-size: var(--app-font-small);
   line-height: 1.3;
 }
 
 .food-price {
   margin-top: 8rpx;
   color: #d0121a;
-  font-size: 28rpx;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -533,7 +625,7 @@ function onTouchEnd() {
 
 .pickup-text {
   color: #1a1a1a;
-  font-size: 32rpx;
+  font-size: var(--app-font-body);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -542,7 +634,7 @@ function onTouchEnd() {
   display: block;
   margin-bottom: 8rpx;
   color: #3c4149;
-  font-size: 26rpx;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
 }
@@ -551,7 +643,7 @@ function onTouchEnd() {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  height: 80rpx;
+  min-height: var(--app-touch-target);
   padding: 0 28rpx;
   border: 2px solid #d0121a;
   border-radius: 999px;
@@ -574,13 +666,13 @@ function onTouchEnd() {
   height: 72rpx;
   min-width: 0;
   color: #1a1a1a;
-  font-size: 32rpx;
+  font-size: var(--app-font-body);
   caret-color: #d0121a;
 }
 
 .field-placeholder {
   color: #5c6370;
-  font-size: 32rpx;
+  font-size: var(--app-font-body);
 }
 
 .actions {
@@ -594,8 +686,7 @@ function onTouchEnd() {
   justify-content: center;
   gap: 8rpx;
   min-width: 0;
-  height: 72rpx;
-  min-height: 0;
+  min-height: var(--app-touch-target);
   margin: 0;
   padding: 0;
   border: 0;
@@ -621,7 +712,7 @@ function onTouchEnd() {
 
 .action-label {
   color: #1a1a1a;
-  font-size: 28rpx;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -632,5 +723,25 @@ function onTouchEnd() {
 .action:focus-visible {
   outline: 2px solid #d0121a;
   outline-offset: -2px;
+}
+
+@media (max-height: 500px) {
+  .stage {
+    position: relative;
+    height: 140px;
+  }
+
+  .below {
+    position: relative;
+    transform: none !important;
+    visibility: visible;
+    touch-action: pan-y;
+    cursor: auto;
+    transition: none;
+  }
+
+  .pickup-card {
+    transform: none !important;
+  }
 }
 </style>

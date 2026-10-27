@@ -12,7 +12,7 @@
 | Primary / logo / button | `#D0121A` | `--color-primary` |
 | On Primary | `#FFFFFF` | `--color-on-primary` |
 | Background | `#FFFFFF` | `--color-background` |
-| Canvas outside the phone column | `#F2F2F2` | `--color-canvas` |
+| Page canvas | `#F2F3F5` | `--app-color-page` |
 | Foreground | `#1A1A1A` | `--color-foreground` |
 | Muted text | `#3C4149` | `--color-muted` |
 | Placeholder | `#5C6370` | `--color-placeholder` |
@@ -27,11 +27,13 @@
 
 ## Layout
 
-- 手机宽度，页面最大 375px，居中。
+- 页面全宽，移除手机列的最大宽度限制；统一响应式规则见 `docs/responsive-layout.md`。
+- 768px / 1200px 宽度断点增加间距和内容网格列数，文字保持可读尺寸。
+- 安全区、动态视口和固定导航占位通过全局 CSS 变量维护。
 - 首页顶部地图预留区约 40vh，浅灰，不画假地图。
 - 白色内容区叠在地图预留区下沿。
 - 底部固定导航只有「首页」「我的」。
-- 小应用宫格一行 5 个。没有挂入应用时保留两行高度。
+- 小应用宫格手机一行 4 个，平板 6 个，桌面 8 个。
 
 ## Avoid
 
