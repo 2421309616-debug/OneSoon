@@ -1,0 +1,22 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/home",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "万顺司机",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "万顺司机",
+    "navigationBarBackgroundColor": "#2A2A34",
+    "backgroundColor": "#F2F2F2",
+    "backgroundTextStyle": "light",
+    "rpxCalcMaxDeviceWidth": 375,
+    "rpxCalcBaseDeviceWidth": 375
+  }
+}
