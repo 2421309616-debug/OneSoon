@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Vue 3 + uni-app，代码在 `apps/passenger`。先做移动端 H5，同一套页面以后编译成小程序。
+前端是 Vue 3 + uni-app，代码在 `apps/passenger`。先做移动端 H5，同一套页面以后编译成小程序。后端是 NestJS，运行在 Node.js 上，乘客端、司机端、管理端共用这一套。见 `docs/adr/0001-nestjs-for-backend.md`。本地数据库是 Docker 里的 PostgreSQL，见 `docs/adr/0002-postgres-in-docker.md`。
 
 ## Users
 
@@ -20,7 +20,7 @@ Vue 3 + uni-app，代码在 `apps/passenger`。先做移动端 H5，同一套页
 
 ## Capabilities and Constraints
 
-- 已做页面：首页、我的。
+- 已做页面：登录、首页、我的。打开乘客端先填写手机号和验证码。本地验证码打印在后端终端，不显示在页面上。
 - 地图区域先空着，保留固定展示位置。
 - 派单后的司机位置、距离和预计到达时间先不做。
 - 小应用从 `apps/passenger/src/mini-apps.ts` 挂入。当前没有具体应用。

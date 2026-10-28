@@ -1,11 +1,20 @@
 <script setup lang="ts">
+import { ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
+import { requirePassenger } from "@/passenger-session";
 
+const nickname = ref("");
 const entries = [
   { id: "orders", name: "全部订单", icon: "/static/icons/entry-orders.svg" },
   { id: "depart", name: "待出发", icon: "/static/icons/entry-depart.svg" },
   { id: "service", name: "客服", icon: "/static/icons/entry-service.svg" },
 ];
+
+onShow(() => {
+  const passenger = requirePassenger();
+  nickname.value = passenger?.nickname ?? "";
+});
 </script>
 
 <template>
@@ -15,7 +24,7 @@ const entries = [
         <view class="avatar" aria-hidden="true">
           <text class="avatar-text">万</text>
         </view>
-        <text class="name">万顺用户</text>
+        <text class="name">{{ nickname }}</text>
         <text class="en">OneSoon</text>
       </view>
 
