@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { getCurrentInstance, nextTick, onUnmounted, ref } from "vue";
-import { onReady } from "@dcloudio/uni-app";
+import { onReady, onShow } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
 import MiniAppGrid from "@/components/MiniAppGrid.vue";
+import { requirePassenger } from "@/passenger-session";
+
+onShow(() => {
+  requirePassenger();
+});
 
 const destination = ref("");
 const offset = ref(0);
