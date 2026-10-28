@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      if (sessionStorage.getItem("onesoon-admin-user") === "chimera") {
+        location.replace("index.html");
+      }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f3ee" />
+    <title>登录 - 万顺管理端</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #f4f3ee;
+      }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 32px 24px;
+        color: #16181c;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      }
+
+      ::selection {
+        background: #f3c4c6;
+        color: #16181c;
+      }
+
+      .login {
+        width: min(360px, 100%);
+      }
+
+      .logo {
+        margin: 0 0 40px;
+        color: #d0121a;
+        font-size: 36px;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        text-align: center;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .field + .field {
+        margin-top: 20px;
+      }
+
+      label {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        height: 48px;
+        margin: 0;
+        padding: 0 14px;
+        border: 1px solid #d5d0c6;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #16181c;
+        font: inherit;
+        font-size: 16px;
+      }
+
+      input:focus-visible {
+        border-color: #d0121a;
+        outline: 2px solid #d0121a;
+        outline-offset: 2px;
+      }
+
+      .login-error {
+        min-height: 20px;
+        margin: 12px 0 0;
+        color: #9a1c22;
+        font-size: 14px;
+        line-height: 20px;
+      }
+
+      button {
+        width: 100%;
+        height: 48px;
+        margin-top: 16px;
+        border: 0;
+        border-radius: 12px;
+        background: #11181e;
+        color: #ffffff;
+        font: inherit;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #2a3138;
+      }
+
+      button:focus-visible {
+        outline: 2px solid #11181e;
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="login">
+      <h1 class="logo">万顺 · OneSoon</h1>
+      <form id="login-form">
+        <div class="field">
+          <label for="account">账号</label>
+          <input id="account" name="account" type="text" autocomplete="username" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" />
+        </div>
+        <p class="login-error" role="alert"></p>
+        <button type="submit">登录</button>
+      </form>
+    </main>
+    <script>
+      const users = [{ account: "chimera", password: "666666" }];
+      const form = document.querySelector("#login-form");
+      const accountInput = document.querySelector("#account");
+      const passwordInput = document.querySelector("#password");
+      const error = document.querySelector(".login-error");
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const account = accountInput.value.trim();
+        const password = passwordInput.value;
+        if (!account || !password) {
+          error.textContent = !account ? "请输入账号" : "请输入密码";
+          (account ? passwordInput : accountInput).focus();
+          return;
+        }
+        const matched = users.some((user) => user.account === account && user.password === password);
+        if (!matched) {
+          error.textContent = "账号或密码不正确";
+          passwordInput.focus();
+          return;
+        }
+        sessionStorage.setItem("onesoon-admin-user", account);
+        location.replace("index.html");
+      });
+    </script>
+  </body>
+</html>
