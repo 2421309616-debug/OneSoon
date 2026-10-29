@@ -6,12 +6,25 @@ type ErrorBody = {
   message?: string | string[];
 };
 
-export async function postJson<T>(path: string, data: Record<string, string>): Promise<T> {
+export type PlaceSearch = {
+  placeId: string;
+  name: string;
+  address: string;
+  longitude: number;
+  latitude: number;
+  searchCount: number;
+};
+
+async function requestJson<T>(
+  path: string,
+  method: "GET" | "POST",
+  data?: Record<string, unknown>,
+): Promise<T> {
   let response: UniApp.RequestSuccessCallbackResult;
   try {
     response = await uni.request({
       url: `${API_ROOT}${path}`,
-      method: "POST",
+      method,
       data,
       header: { "Content-Type": "application/json" },
     });
@@ -29,10 +42,34 @@ export async function postJson<T>(path: string, data: Record<string, string>): P
   throw new Error(message || "请求失败");
 }
 
+export async function postJson<T>(path: string, data: Record<string, string>): Promise<T> {
+  return requestJson<T>(path, "POST", data);
+}
+
 export function requestVerificationCode(phone: string) {
   return postJson<{ accepted: boolean }>("/passengers/verification-codes", { phone });
 }
 
 export function enterWithCode(phone: string, code: string) {
   return postJson<PassengerSession>("/passengers/sessions", { phone, code });
+}
+
+export function listPlaceSearches(passengerId: string) {
+  return requestJson<{ places: PlaceSearch[] }>(
+    `/passengers/${passengerId}/place-searches`,
+    "GET",
+  );
+}
+
+export function recordPlaceSearch(
+  passengerId: string,
+  place: {
+    placeId: string;
+    name: string;
+    address: string;
+    longitude: number;
+    latitude: number;
+  },
+) {
+  return requestJson<PlaceSearch>(`/passengers/${passengerId}/place-searches`, "POST", place);
 }

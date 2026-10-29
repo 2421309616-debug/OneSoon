@@ -3,13 +3,18 @@ import { getCurrentInstance, nextTick, onUnmounted, ref } from "vue";
 import { onReady, onShow } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
 import MiniAppGrid from "@/components/MiniAppGrid.vue";
+import { readChosenDestination, type ChosenDestination } from "@/chosen-destination";
+import { mountPassengerMap, type MapPlace } from "@/passenger-map";
 import { requirePassenger } from "@/passenger-session";
 
+const destinationName = ref("");
+let showDestination: ((place: MapPlace, screenY: number) => void) | undefined;
+
 onShow(() => {
-  requirePassenger();
+  if (!requirePassenger()) return;
+  applyDestination(readChosenDestination());
 });
 
-const destination = ref("");
 const offset = ref(0);
 const minOffset = ref(0);
 const restOffset = ref(0);
@@ -43,6 +48,7 @@ let wheelTimer = 0;
 let measurementVersion = 0;
 let followingCard = false;
 let sheetElement: HTMLElement | null = null;
+let destroyMap: (() => void) | undefined;
 let removePointerListeners: (() => void) | undefined;
 const animationFrames = new Set<number>();
 
@@ -82,6 +88,22 @@ function resetFlowLayout() {
   cardShift.value = 0;
   placed.value = true;
   settled.value = true;
+}
+
+function openDestination() {
+  uni.navigateTo({ url: "/pages/destination/destination" });
+}
+
+function markerScreenY() {
+  const top = sheetElement?.getBoundingClientRect().top ?? 0;
+  if (top > 80) return top * 0.42;
+  return window.innerHeight * 0.28;
+}
+
+function applyDestination(place: ChosenDestination | null) {
+  destinationName.value = place?.name ?? "";
+  if (!place) return;
+  showDestination?.(place, markerScreenY());
 }
 
 function isInteractive(target: EventTarget | null) {
@@ -222,6 +244,19 @@ onReady(() => {
     readPinTop();
     measure(true, ++measurementVersion);
     window.addEventListener("resize", remeasure);
+    const root = proxy?.$el;
+    const mapSlot = root instanceof HTMLElement ? root.querySelector(".map-slot") : null;
+    if (mapSlot instanceof HTMLElement) {
+      mountPassengerMap(mapSlot).then((map) => {
+        if (disposed) {
+          map.destroy();
+          return;
+        }
+        destroyMap = () => map.destroy();
+        showDestination = map.showDestination;
+        applyDestination(readChosenDestination());
+      });
+    }
   });
 });
 
@@ -317,6 +352,7 @@ function onTouchEnd() {
 }
 
 onUnmounted(() => {
+  destroyMap?.();
   disposed = true;
   measurementVersion++;
   stopGesture();
@@ -359,17 +395,11 @@ onUnmounted(() => {
 
         <view class="field">
           <text class="field-label">目的地</text>
-          <view class="field-box">
+          <view class="field-box" role="button" hover-class="field-box--pressed" @tap="openDestination">
             <image class="search-icon" src="/static/icons/search.svg" mode="aspectFit" aria-hidden="true" />
-            <input
-              v-model="destination"
-              class="field-input"
-              type="text"
-              confirm-type="search"
-              placeholder="输入目的地"
-              placeholder-class="field-placeholder"
-              aria-label="目的地"
-            />
+            <text :class="destinationName ? 'field-value' : 'field-placeholder'">
+              {{ destinationName || "输入目的地" }}
+            </text>
           </view>
         </view>
 
@@ -473,6 +503,33 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background: #e8eaed;
+}
+
+.map-slot :deep(.amap-logo) {
+  top: calc(12px + var(--app-safe-top)) !important;
+  right: 8px !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+.map-slot :deep(.amap-copyright) {
+  top: calc(34px + var(--app-safe-top)) !important;
+  right: 8px !important;
+  bottom: auto !important;
+  left: auto !important;
+  text-align: right;
+}
+
+.map-slot :deep(.amap-marker-label) {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 2px 0 0 !important;
+  color: #1a1a1a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-shadow: 0 0 2px #ffffff, 0 0 4px #ffffff;
 }
 
 .below {
@@ -656,8 +713,8 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-.field-box:focus-within {
-  box-shadow: 0 0 0 4px rgba(208, 18, 26, 0.18);
+.field-box--pressed {
+  background: #f7f7f7;
 }
 
 .search-icon {
@@ -666,18 +723,21 @@ onUnmounted(() => {
   flex: none;
 }
 
-.field-input {
-  flex: 1;
-  height: 72rpx;
+.field-placeholder,
+.field-value {
   min-width: 0;
-  color: #1a1a1a;
+  overflow: hidden;
   font-size: var(--app-font-body);
-  caret-color: #d0121a;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .field-placeholder {
   color: #5c6370;
-  font-size: var(--app-font-body);
+}
+
+.field-value {
+  color: #1a1a1a;
 }
 
 .actions {

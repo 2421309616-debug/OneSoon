@@ -18,6 +18,14 @@
       }
     },
     {
+      "path": "pages/destination/destination",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "你想去哪儿",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    {
       "path": "pages/profile/profile",
       "style": {
         "navigationStyle": "custom",

@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import {
   PassengersService,
   requireCode,
@@ -22,5 +22,15 @@ export class PassengersController {
   @Post('sessions')
   enter(@Body() body: { phone?: unknown; code?: unknown }) {
     return this.passengers.enter(requirePhone(body?.phone), requireCode(body?.code));
+  }
+
+  @Get(':id/place-searches')
+  listPlaceSearches(@Param('id') id: string) {
+    return this.passengers.listPlaceSearches(id);
+  }
+
+  @Post(':id/place-searches')
+  recordPlaceSearch(@Param('id') id: string, @Body() body: unknown) {
+    return this.passengers.recordPlaceSearch(id, body);
   }
 }
