@@ -17,3 +17,22 @@ CREATE TABLE IF NOT EXISTS passenger (
 );
 
 ALTER SEQUENCE passenger_id_seq OWNED BY passenger.id;
+
+CREATE TABLE IF NOT EXISTS passenger_place_search (
+  passenger_id text NOT NULL,
+  place_id text NOT NULL,
+  name text NOT NULL,
+  address text NOT NULL DEFAULT '',
+  longitude double precision NOT NULL,
+  latitude double precision NOT NULL,
+  search_count integer NOT NULL DEFAULT 1,
+  last_searched_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (passenger_id, place_id),
+  CONSTRAINT passenger_place_search_passenger_fk
+    FOREIGN KEY (passenger_id) REFERENCES passenger (id) ON DELETE CASCADE,
+  CONSTRAINT passenger_place_search_place_id_present CHECK (btrim(place_id) <> ''),
+  CONSTRAINT passenger_place_search_name_present CHECK (btrim(name) <> ''),
+  CONSTRAINT passenger_place_search_count_positive CHECK (search_count >= 1),
+  CONSTRAINT passenger_place_search_longitude_range CHECK (longitude >= -180 AND longitude <= 180),
+  CONSTRAINT passenger_place_search_latitude_range CHECK (latitude >= -90 AND latitude <= 90)
+);
