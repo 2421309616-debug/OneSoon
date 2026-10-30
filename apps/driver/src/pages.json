@@ -8,6 +8,15 @@
         "backgroundColor": "#2A2A34",
         "disableScroll": true
       }
+    },
+    {
+      "path": "pages/workflow/workflow",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "司机接单流程",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
     }
   ],
   "globalStyle": {
