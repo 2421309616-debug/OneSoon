@@ -8,6 +8,60 @@
         "backgroundColor": "#2A2A34",
         "disableScroll": true
       }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "司机登录",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/trip/trip",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "行程中",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/dispatch/dispatch",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "订单详情",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/orders/orders",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "订单",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/earnings/earnings",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "营收情况",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "我的",
+        "backgroundColor": "#2A2A34",
+        "disableScroll": true
+      }
     }
   ],
   "globalStyle": {

@@ -24,7 +24,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       if (name !== 'onesoon') {
         throw new Error(`Expected database onesoon, connected to ${name}`);
       }
-      await this.applyPassengerSchema();
+      await this.applySchema('passenger.sql');
+      await this.applySchema('driver.sql');
       this.logger.log(`Connected to database ${name}`);
     } catch (error) {
       await this.pool.end();
@@ -58,10 +59,10 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return name;
   }
 
-  private async applyPassengerSchema(): Promise<void> {
+  private async applySchema(fileName: string): Promise<void> {
     const sqlPath = join(
       dirname(fileURLToPath(import.meta.url)),
-      'passenger.sql',
+      fileName,
     );
     const statements = readFileSync(sqlPath, 'utf8')
       .split(';')

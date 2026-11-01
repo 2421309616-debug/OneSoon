@@ -24,5 +24,6 @@ import {
       useValue: () => Date.now(),
     },
   ],
+  exports: [VerificationCodesService],
 })
 export class PassengersModule {}
