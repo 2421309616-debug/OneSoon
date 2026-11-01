@@ -10,13 +10,40 @@
       }
     },
     {
-      "path": "pages/workflow/workflow",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "司机接单流程",
-        "backgroundColor": "#2A2A34",
-        "disableScroll": true
-      }
+      "path": "pages/login/login",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "司机登录", "backgroundColor": "#FFFFFF" }
+    },
+    {
+      "path": "pages/online/online",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "听单中心", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/dispatch/dispatch",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "派单大厅", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/history/history",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "已完成订单", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/payment/payment",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "行程收款", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/manual/manual",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "司机手册", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/trip/trip",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "行程", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/earnings/earnings",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "收入明细", "backgroundColor": "#F2F3F5", "disableScroll": true }
+    },
+    {
+      "path": "pages/mode/mode",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "模式设置", "backgroundColor": "#2A2A34", "disableScroll": true }
     }
   ],
   "globalStyle": {

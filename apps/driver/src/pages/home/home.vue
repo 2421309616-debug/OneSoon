@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
 import { onReady } from "@dcloudio/uni-app";
+import { driverApi } from "@/driver-api";
 
 const offset = ref(0);
 const travel = ref(0);
@@ -41,6 +42,24 @@ const notices = ref<Notice[]>([
 
 function removeNotice(title: string) {
   notices.value = notices.value.filter((item) => item.title !== title);
+}
+
+function openPage(path: string) {
+  uni.navigateTo({ url: path });
+}
+
+async function startListening() {
+  try { await driverApi.setAvailability(true); } catch { /* 本地演示状态继续 */ }
+  uni.setStorageSync("onesoon-driver-online", true);
+  uni.navigateTo({ url: "/pages/online/online" });
+}
+
+function openDriverGuide() {
+  uni.navigateTo({ url: "/pages/manual/manual" });
+}
+
+function openModeSettings() {
+  uni.navigateTo({ url: "/pages/mode/mode" });
 }
 
 function sheetEl() {
@@ -177,7 +196,7 @@ onReady(() => {
 <template>
   <view class="screen">
     <view class="titlebar">
-      <button class="account" role="button" hover-class="account--pressed" aria-label="个人">
+      <button class="account" role="button" hover-class="account--pressed" aria-label="司机账号" @tap="openPage('/pages/login/login')">
         <image class="account-icon" src="/static/icons/person.svg" mode="aspectFit" aria-hidden="true" />
       </button>
       <view class="brand">
@@ -212,15 +231,15 @@ onReady(() => {
         </view>
       </view>
       <view class="tool-row">
-        <button class="tool" role="button" hover-class="tool--pressed">
+        <button class="tool" role="button" hover-class="tool--pressed" @tap="openDriverGuide">
           <image class="tool-icon" src="/static/icons/manual.svg" mode="aspectFit" aria-hidden="true" />
           <text class="tool-label">手册</text>
         </button>
-        <button class="tool" role="button" hover-class="tool--pressed">
+        <button class="tool" role="button" hover-class="tool--pressed" @tap="openPage('/pages/earnings/earnings')">
           <image class="tool-icon" src="/static/icons/reward.svg" mode="aspectFit" aria-hidden="true" />
           <text class="tool-label">奖励</text>
         </button>
-        <button class="tool" role="button" hover-class="tool--pressed">
+        <button class="tool" role="button" hover-class="tool--pressed" @tap="openPage('/pages/history/history')">
           <image class="tool-icon" src="/static/icons/order.svg" mode="aspectFit" aria-hidden="true" />
           <text class="tool-label">订单详情</text>
         </button>
@@ -255,11 +274,11 @@ onReady(() => {
       </view>
     </view>
     <view class="action-bar">
-      <button class="action-side" role="button" hover-class="action-side--pressed" aria-label="模式">
+      <button class="action-side" role="button" hover-class="action-side--pressed" aria-label="模式设置" @tap="openModeSettings">
         <image class="action-gear" src="/static/icons/gear.svg" mode="aspectFit" aria-hidden="true" />
         <text class="action-mode">模式</text>
       </button>
-      <button class="action-main" role="button" hover-class="action-main--pressed">
+      <button class="action-main" role="button" hover-class="action-main--pressed" @tap="startListening">
         <text class="action-go">点击出车</text>
       </button>
     </view>
@@ -433,11 +452,11 @@ onReady(() => {
 
 .tool-row {
   position: absolute;
-  top: calc(100% - 17cqh - 16rpx);
+  top: calc(100% - 20cqh - 16rpx);
   left: 22rpx;
   right: 22rpx;
   display: flex;
-  height: 17cqh;
+  height: 20cqh;
   gap: 28rpx;
 }
 
@@ -611,9 +630,13 @@ onReady(() => {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  padding: 28rpx 40rpx calc(28rpx + env(safe-area-inset-bottom));
+  height: calc(80px + env(safe-area-inset-bottom));
+  min-height: calc(80px + env(safe-area-inset-bottom));
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
   background: #272733;
+  box-sizing: border-box;
 }
+
 
 .action-side {
   display: flex;
