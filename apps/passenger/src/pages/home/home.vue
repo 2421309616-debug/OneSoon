@@ -3,16 +3,16 @@ import { getCurrentInstance, nextTick, onUnmounted, ref } from "vue";
 import { onReady, onShow } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
 import MiniAppGrid from "@/components/MiniAppGrid.vue";
-import { readChosenDestination, type ChosenDestination } from "@/chosen-destination";
-import { mountPassengerMap, type MapPlace } from "@/passenger-map";
+import { saveChosenPickup } from "@/chosen-destination";
+import { mountPassengerMap } from "@/passenger-map";
 import { requirePassenger } from "@/passenger-session";
 
-const destinationName = ref("");
-let showDestination: ((place: MapPlace, screenY: number) => void) | undefined;
+const pickupName = ref("");
+const pinY = ref(0);
+const pinLifted = ref(false);
 
 onShow(() => {
-  if (!requirePassenger()) return;
-  applyDestination(readChosenDestination());
+  requirePassenger();
 });
 
 const offset = ref(0);
@@ -98,12 +98,6 @@ function markerScreenY() {
   const top = sheetElement?.getBoundingClientRect().top ?? 0;
   if (top > 80) return top * 0.42;
   return window.innerHeight * 0.28;
-}
-
-function applyDestination(place: ChosenDestination | null) {
-  destinationName.value = place?.name ?? "";
-  if (!place) return;
-  showDestination?.(place, markerScreenY());
 }
 
 function isInteractive(target: EventTarget | null) {
@@ -253,8 +247,20 @@ onReady(() => {
           return;
         }
         destroyMap = () => map.destroy();
-        showDestination = map.showDestination;
-        applyDestination(readChosenDestination());
+        pinY.value = markerScreenY();
+        map.watchPickup(
+          () => pinY.value,
+          () => {
+            pinLifted.value = true;
+          },
+          (place) => {
+            if (disposed) return;
+            pinLifted.value = false;
+            pickupName.value = place.name;
+            saveChosenPickup(place);
+          },
+        );
+        map.locate(pinY.value);
       });
     }
   });
@@ -372,6 +378,13 @@ onUnmounted(() => {
         <text class="brand-en">OneSoon</text>
       </view>
       <view class="map-slot" aria-label="地图展示区域"></view>
+      <view v-if="pinY" class="pickup-pin" :style="{ top: `${pinY}px` }" aria-hidden="true">
+        <view class="pickup-pin-body" :class="{ 'is-lifted': pinLifted }">
+          <view class="pickup-pin-head"></view>
+          <view class="pickup-pin-stem"></view>
+        </view>
+        <view class="pickup-pin-base"></view>
+      </view>
     </view>
 
     <view
@@ -390,16 +403,14 @@ onUnmounted(() => {
       >
         <view class="pickup">
           <view class="pickup-dot" aria-hidden="true"></view>
-          <text class="pickup-text">请选择上车点</text>
+          <text class="pickup-text">{{ pickupName || "请选择上车点" }}</text>
         </view>
 
         <view class="field">
           <text class="field-label">目的地</text>
           <view class="field-box" role="button" hover-class="field-box--pressed" @tap="openDestination">
             <image class="search-icon" src="/static/icons/search.svg" mode="aspectFit" aria-hidden="true" />
-            <text :class="destinationName ? 'field-value' : 'field-placeholder'">
-              {{ destinationName || "输入目的地" }}
-            </text>
+            <text class="field-placeholder">输入目的地</text>
           </view>
         </view>
 
@@ -518,6 +529,62 @@ onUnmounted(() => {
   bottom: auto !important;
   left: auto !important;
   text-align: right;
+}
+
+.pickup-pin {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.pickup-pin-body {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  transition: transform 0.15s ease-out;
+}
+
+.pickup-pin-body.is-lifted {
+  transform: translate(-50%, -10px);
+}
+
+.pickup-pin-head {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: var(--app-color-primary);
+  box-shadow: 0 2px 6px rgba(26, 26, 26, 0.3);
+}
+
+.pickup-pin-stem {
+  width: 2px;
+  height: 14px;
+  background: var(--app-color-primary);
+}
+
+.pickup-pin-base {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(26, 26, 26, 0.3);
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pickup-pin-body {
+    transition: none;
+  }
 }
 
 .map-slot :deep(.amap-marker-label) {
@@ -686,6 +753,11 @@ onUnmounted(() => {
 }
 
 .pickup-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: #1a1a1a;
   font-size: var(--app-font-body);
   font-weight: 600;
@@ -723,21 +795,13 @@ onUnmounted(() => {
   flex: none;
 }
 
-.field-placeholder,
-.field-value {
+.field-placeholder {
   min-width: 0;
   overflow: hidden;
+  color: #5c6370;
   font-size: var(--app-font-body);
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-.field-placeholder {
-  color: #5c6370;
-}
-
-.field-value {
-  color: #1a1a1a;
 }
 
 .actions {

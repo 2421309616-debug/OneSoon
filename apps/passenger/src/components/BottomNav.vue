@@ -56,6 +56,8 @@ function go(url: string) {
   bottom: 0;
   display: flex;
   width: 100%;
+  max-width: 375px;
+  margin: 0 auto;
   background: var(--app-color-surface);
   border-top: 1px solid #ece7e7;
   padding: 0 var(--app-safe-right) var(--app-safe-bottom) var(--app-safe-left);
