@@ -1,4 +1,5 @@
 const STORAGE_KEY = "onesoon-chosen-destination";
+const PICKUP_KEY = "onesoon-chosen-pickup";
 
 export type ChosenDestination = {
   name: string;
@@ -6,12 +7,26 @@ export type ChosenDestination = {
   latitude: number;
 };
 
+export type ChosenPickup = ChosenDestination;
+
 export function saveChosenDestination(place: ChosenDestination) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(place));
 }
 
 export function readChosenDestination(): ChosenDestination | null {
-  const raw = sessionStorage.getItem(STORAGE_KEY);
+  return readPlace(STORAGE_KEY);
+}
+
+export function saveChosenPickup(place: ChosenPickup) {
+  sessionStorage.setItem(PICKUP_KEY, JSON.stringify(place));
+}
+
+export function readChosenPickup(): ChosenPickup | null {
+  return readPlace(PICKUP_KEY);
+}
+
+function readPlace(key: string): ChosenDestination | null {
+  const raw = sessionStorage.getItem(key);
   if (!raw) return null;
   try {
     const value = JSON.parse(raw) as Partial<ChosenDestination>;

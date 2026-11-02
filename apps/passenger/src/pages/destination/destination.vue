@@ -78,11 +78,7 @@ function chooseTip(tip: PlaceTip) {
       latitude: tip.latitude,
     }).catch(() => undefined);
   }
-  uni.navigateBack({
-    fail() {
-      uni.reLaunch({ url: "/pages/home/home" });
-    },
-  });
+  uni.navigateTo({ url: "/pages/booking/booking" });
 }
 
 function backHome() {
@@ -130,7 +126,7 @@ function backHome() {
       <view class="recommend-bar">
         <text class="recommend-title">为你推荐</text>
       </view>
-      <view v-for="place in places" :key="place.placeId" class="place">
+      <view v-for="place in places" :key="place.placeId" class="place" role="button" @tap="chooseTip(place)">
         <text class="place-name">{{ place.name }}</text>
         <text v-if="place.address" class="place-address">{{ place.address }}</text>
       </view>
@@ -139,7 +135,7 @@ function backHome() {
       <view class="recommend-bar">
         <text class="recommend-title">丰都县</text>
       </view>
-      <view v-for="place in fengduPlaces" :key="place.placeId" class="place">
+      <view v-for="place in fengduPlaces" :key="place.placeId" class="place" role="button" @tap="chooseTip(place)">
         <text class="place-name">{{ place.name }}</text>
         <text class="place-address">{{ place.address }}</text>
       </view>

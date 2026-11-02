@@ -70,7 +70,9 @@ textarea {
 .app-page {
   position: relative;
   width: 100%;
+  max-width: 375px;
   min-width: 0;
+  margin: 0 auto;
   min-height: var(--app-viewport-height);
   background: var(--app-color-page);
 }
@@ -102,26 +104,6 @@ textarea {
   min-width: 0;
   border-radius: var(--app-card-radius);
   background: var(--app-color-surface);
-}
-
-@media (min-width: 768px) {
-  page {
-    --app-gutter: 16px;
-    --app-gap: 16px;
-    --app-card-padding: 20px;
-    --app-section-columns: 2;
-    --app-shortcut-columns: 6;
-  }
-}
-
-@media (min-width: 1200px) {
-  page {
-    --app-gutter: 24px;
-    --app-gap: 24px;
-    --app-card-padding: 24px;
-    --app-section-columns: 3;
-    --app-shortcut-columns: 8;
-  }
 }
 
 /* Fixed viewport pages must remain scrollable on landscape and short windows. */

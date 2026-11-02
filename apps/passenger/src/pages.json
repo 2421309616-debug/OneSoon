@@ -26,6 +26,15 @@
       }
     },
     {
+      "path": "pages/booking/booking",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "打车",
+        "backgroundColor": "#E8EAED",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/profile/profile",
       "style": {
         "navigationStyle": "custom",

@@ -132,7 +132,7 @@ async function enterHome() {
 }
 
 .login {
-  width: min(100%, 390px);
+  width: min(100%, 375px);
   min-height: var(--app-viewport-height);
   margin: 0 auto;
   padding: calc(var(--app-safe-top) + 72px) 24px calc(var(--app-safe-bottom) + 32px);
