@@ -9,7 +9,20 @@ const entries = [
   { id: "orders", name: "全部订单", icon: "/static/icons/entry-orders.svg" },
   { id: "depart", name: "待出发", icon: "/static/icons/entry-depart.svg" },
   { id: "service", name: "客服", icon: "/static/icons/entry-service.svg" },
+  { id: "settings", name: "设置", icon: "/static/icons/entry-settings.svg" },
 ];
+
+function confirmLogout() {
+  uni.showModal({
+    title: "退出登录",
+    content: "确定要退出当前账号吗？",
+    success: ({ confirm }) => {
+      if (!confirm) return;
+      uni.removeStorageSync("onesoon-passenger");
+      uni.reLaunch({ url: "/pages/login/login" });
+    },
+  });
+}
 
 onShow(() => {
   const passenger = requirePassenger();
@@ -38,6 +51,12 @@ onShow(() => {
         >
           <image class="entry-icon" :src="item.icon" mode="aspectFit" aria-hidden="true" />
           <text class="entry-name">{{ item.name }}</text>
+        </button>
+      </view>
+
+      <view class="app-card logout-card">
+        <button class="logout-button" hover-class="logout-button--pressed" @click="confirmLogout">
+          退出登录
         </button>
       </view>
     </view>
@@ -141,5 +160,30 @@ onShow(() => {
   color: #1a1a1a;
   font-size: var(--app-font-small);
   font-weight: 500;
+}
+
+.logout-card {
+  padding: 12rpx 24rpx;
+}
+
+.logout-button {
+  width: 100%;
+  margin: 0;
+  padding: 20rpx 0;
+  border: 0;
+  border-radius: 12rpx;
+  background: transparent;
+  color: #d0121a;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.logout-button::after {
+  border: 0;
+}
+
+.logout-button--pressed {
+  background: #fdf1f2;
 }
 </style>
