@@ -36,3 +36,29 @@ CREATE TABLE IF NOT EXISTS passenger_place_search (
   CONSTRAINT passenger_place_search_longitude_range CHECK (longitude >= -180 AND longitude <= 180),
   CONSTRAINT passenger_place_search_latitude_range CHECK (latitude >= -90 AND latitude <= 90)
 );
+
+CREATE TABLE IF NOT EXISTS trip_order (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  passenger_id text NOT NULL,
+  pickup_name text NOT NULL,
+  pickup_longitude double precision NOT NULL,
+  pickup_latitude double precision NOT NULL,
+  destination_name text NOT NULL,
+  destination_longitude double precision NOT NULL,
+  destination_latitude double precision NOT NULL,
+  distance_meters integer NOT NULL,
+  duration_seconds integer NOT NULL,
+  fare_cents integer NOT NULL,
+  status text NOT NULL DEFAULT 'waiting',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  cancelled_at timestamptz,
+  CONSTRAINT trip_order_passenger_fk
+    FOREIGN KEY (passenger_id) REFERENCES passenger (id) ON DELETE CASCADE,
+  CONSTRAINT trip_order_status_known CHECK (status IN ('waiting', 'cancelled')),
+  CONSTRAINT trip_order_cancelled_at_matches CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL)),
+  CONSTRAINT trip_order_route_positive CHECK (distance_meters > 0 AND duration_seconds > 0),
+  CONSTRAINT trip_order_fare_positive CHECK (fare_cents > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS trip_order_one_waiting_per_passenger
+  ON trip_order (passenger_id) WHERE status = 'waiting';

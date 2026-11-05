@@ -73,3 +73,40 @@ export function recordPlaceSearch(
 ) {
   return requestJson<PlaceSearch>(`/passengers/${passengerId}/place-searches`, "POST", place);
 }
+
+type TripPlace = {
+  name: string;
+  longitude: number;
+  latitude: number;
+};
+
+export type TripOrder = {
+  id: string;
+  status: "waiting" | "cancelled";
+  pickup: TripPlace;
+  destination: TripPlace;
+  distanceMeters: number;
+  durationSeconds: number;
+  fareCents: number;
+  createdAt: string;
+};
+
+export function placeOrder(
+  passengerId: string,
+  trip: {
+    pickup: TripPlace;
+    destination: TripPlace;
+    distanceMeters: number;
+    durationSeconds: number;
+  },
+) {
+  return requestJson<TripOrder>(`/passengers/${passengerId}/orders`, "POST", trip);
+}
+
+export function fetchCurrentOrder(passengerId: string) {
+  return requestJson<{ order: TripOrder | null }>(`/passengers/${passengerId}/orders/current`, "GET");
+}
+
+export function cancelOrder(passengerId: string, orderId: string) {
+  return requestJson<TripOrder>(`/passengers/${passengerId}/orders/${orderId}/cancel`, "POST");
+}

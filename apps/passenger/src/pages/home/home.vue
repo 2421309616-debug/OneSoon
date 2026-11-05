@@ -4,6 +4,7 @@ import { onReady, onShow } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
 import MiniAppGrid from "@/components/MiniAppGrid.vue";
 import { saveChosenPickup } from "@/chosen-destination";
+import { fetchCurrentOrder } from "@/passenger-api";
 import { mountPassengerMap } from "@/passenger-map";
 import { requirePassenger } from "@/passenger-session";
 
@@ -12,7 +13,13 @@ const pinY = ref(0);
 const pinLifted = ref(false);
 
 onShow(() => {
-  requirePassenger();
+  const passenger = requirePassenger();
+  if (!passenger) return;
+  fetchCurrentOrder(passenger.id)
+    .then(({ order }) => {
+      if (order) uni.reLaunch({ url: "/pages/waiting/waiting" });
+    })
+    .catch(() => {});
 });
 
 const offset = ref(0);

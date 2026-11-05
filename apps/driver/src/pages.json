@@ -1,6 +1,14 @@
 {
   "pages": [
     {
+      "path": "pages/login/login",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "司机登录", "backgroundColor": "#FFFFFF" }
+    },
+    {
+      "path": "pages/certification/certification",
+      "style": { "navigationStyle": "custom", "navigationBarTitleText": "认证资料", "backgroundColor": "#FFFFFF" }
+    },
+    {
       "path": "pages/home/home",
       "style": {
         "navigationStyle": "custom",
@@ -8,10 +16,6 @@
         "backgroundColor": "#2A2A34",
         "disableScroll": true
       }
-    },
-    {
-      "path": "pages/login/login",
-      "style": { "navigationStyle": "custom", "navigationBarTitleText": "司机登录", "backgroundColor": "#FFFFFF" }
     },
     {
       "path": "pages/online/online",

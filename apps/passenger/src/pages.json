@@ -35,6 +35,15 @@
       }
     },
     {
+      "path": "pages/waiting/waiting",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "等待接单",
+        "backgroundColor": "#E8EAED",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/profile/profile",
       "style": {
         "navigationStyle": "custom",

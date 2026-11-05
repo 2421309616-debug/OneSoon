@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { onLaunch } from "@dcloudio/uni-app";
 
-onLaunch(() => {});
+onLaunch(() => {
+  const route = getCurrentPages().at(-1)?.route;
+  if (route === "pages/login/login") return;
+  uni.reLaunch({ url: "/pages/login/login" });
+});
 </script>
 
 <style>
