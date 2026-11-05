@@ -35,6 +35,7 @@ export type DriverSession = {
   id: string;
   displayName: string;
   phone: string;
+  profileComplete: boolean;
   accessToken?: string;
 };
 
@@ -128,7 +129,7 @@ export const demoEarnings: DriverEarningsSummary = {
 
 const apiBase = (import.meta.env.VITE_DRIVER_API_BASE_URL ?? "").replace(/\/$/, "");
 
-function request<T>(path: string, method: "GET" | "POST" | "PUT", data?: unknown): Promise<T | null> {
+function request<T>(path: string, method: "GET" | "POST" | "PUT", data?: Record<string, unknown>): Promise<T | null> {
   if (!apiBase) return Promise.resolve(null);
 
   return new Promise((resolve, reject) => {
@@ -148,16 +149,45 @@ function request<T>(path: string, method: "GET" | "POST" | "PUT", data?: unknown
   });
 }
 
+const API_ROOT = "http://127.0.0.1:3000";
+
+function postAuth<T>(path: string, data: Record<string, string>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: `${API_ROOT}${path}`,
+      method: "POST",
+      data,
+      header: { "Content-Type": "application/json" },
+      success: ({ statusCode, data: body }) => {
+        if ((statusCode ?? 0) >= 200 && (statusCode ?? 0) < 300) {
+          resolve(body as T);
+          return;
+        }
+        const message = (body as { message?: string | string[] } | null)?.message;
+        reject(new Error((Array.isArray(message) ? message[0] : message) || "请求失败"));
+      },
+      fail: () => reject(new Error("连不上后端。请在 apps/api 运行 npm run start:dev")),
+    });
+  });
+}
+
 export const driverApi = {
   requestVerificationCode: (phone: string) =>
-    apiBase
-      ? request<{ accepted: boolean; demoCode?: string }>("/drivers/verification-codes", "POST", { phone })
-      : Promise.resolve({ accepted: true, demoCode: "123456" }),
-  login: (phone: string, code: string) => {
-    if (apiBase) return request<DriverSession>("/drivers/sessions", "POST", { phone, code });
-    if (code !== "123456") return Promise.reject(new Error("演示验证码为 123456"));
-    return Promise.resolve({ id: "demo-driver", displayName: "王师傅", phone });
-  },
+    postAuth<{ accepted: boolean }>("/drivers/verification-codes", { phone }),
+  login: (phone: string, code: string) =>
+    postAuth<DriverSession>("/drivers/sessions", { phone, code }),
+  completeProfile: (
+    driverId: string,
+    profile: {
+      name: string;
+      idNumber: string;
+      vehicleModel: string;
+      plate: string;
+      photo: string;
+      driverLicense: string;
+      vehicleLicense: string;
+    },
+  ) => postAuth<DriverSession>(`/drivers/${driverId}/profile`, profile),
   getEarnings: (period: "today" | "week" | "month" = "today") =>
     request<DriverEarningsSummary>(`/drivers/me/earnings?date=${period}`, "GET"),
   getTrips: () => request<DriverTripSummary[]>("/drivers/me/trips?date=today", "GET"),

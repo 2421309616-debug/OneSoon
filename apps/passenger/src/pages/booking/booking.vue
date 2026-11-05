@@ -2,19 +2,23 @@
 import { computed, getCurrentInstance, nextTick, onUnmounted, ref } from "vue";
 import { onReady } from "@dcloudio/uni-app";
 import { readChosenDestination, readChosenPickup } from "@/chosen-destination";
+import { placeOrder } from "@/passenger-api";
 import { requirePassenger } from "@/passenger-session";
 import { mountRouteMap, type RouteSummary } from "@/route-map";
+
+const FARE = 10;
 
 const pickup = readChosenPickup();
 const destination = readChosenDestination();
 const summary = ref<RouteSummary | null>(null);
 const routeFailed = ref(false);
+const ordering = ref(false);
 const proxy = getCurrentInstance()?.proxy;
 let disposed = false;
 let destroyMap: (() => void) | undefined;
 let fitRoute = () => {};
 
-const fare = computed(() => estimateFare(summary.value));
+const fare = computed(() => (summary.value ? String(FARE) : "--"));
 const routes = [
   { id: "recommend", name: "平台推荐" },
   { id: "second", name: "路线二" },
@@ -51,12 +55,27 @@ onUnmounted(() => {
   destroyMap?.();
 });
 
-function estimateFare(route: RouteSummary | null): string {
-  if (!route) return "--";
-  const km = route.distance / 1000;
-  const minutes = route.duration / 60;
-  const fare = 10 + Math.max(0, km - 3) * 2.2 + minutes * 0.5;
-  return `${Math.floor(fare * 0.95)}-${Math.ceil(fare * 1.1)}`;
+async function order() {
+  const passenger = requirePassenger();
+  const route = summary.value;
+  if (!passenger || !pickup || !destination || ordering.value) return;
+  if (!route) {
+    uni.showToast({ title: routeFailed.value ? "路线规划失败，无法下单" : "路线规划中，请稍候", icon: "none" });
+    return;
+  }
+  ordering.value = true;
+  try {
+    await placeOrder(passenger.id, {
+      pickup,
+      destination,
+      distanceMeters: Math.max(1, Math.round(route.distance)),
+      durationSeconds: Math.max(1, Math.round(route.duration)),
+    });
+    uni.reLaunch({ url: "/pages/waiting/waiting" });
+  } catch (error) {
+    uni.showToast({ title: error instanceof Error ? error.message : "下单失败", icon: "none" });
+    ordering.value = false;
+  }
 }
 
 function goBack() {
@@ -169,7 +188,7 @@ function comingSoon() {
               <text class="estimate-label">预估</text>
               <text class="estimate-price">¥{{ fare }}</text>
             </view>
-            <button class="order-button" @tap="comingSoon">立即打车</button>
+            <button class="order-button" :disabled="ordering" @tap="order">{{ ordering ? "下单中" : "立即打车" }}</button>
           </view>
         </view>
       </view>
@@ -472,5 +491,11 @@ svg {
   font-size: 17px;
   font-weight: 700;
   line-height: 52px;
+}
+
+.order-button[disabled] {
+  background: #d0121a;
+  color: #ffffff;
+  opacity: 0.7;
 }
 </style>

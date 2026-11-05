@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
-import { onReady } from "@dcloudio/uni-app";
+import { onReady, onShow } from "@dcloudio/uni-app";
 import { driverApi } from "@/driver-api";
+import { requireDriver } from "@/driver-session";
+
+onShow(() => {
+  const driver = requireDriver();
+  if (driver && !driver.profileComplete) {
+    uni.reLaunch({ url: "/pages/certification/certification" });
+  }
+});
 
 const offset = ref(0);
 const travel = ref(0);
