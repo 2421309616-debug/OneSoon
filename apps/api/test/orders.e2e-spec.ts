@@ -122,6 +122,140 @@ describe('passenger trip orders (e2e)', () => {
       });
   });
 
+  it('lets one driver accept the waiting order and shows that driver to the passenger', async () => {
+    const passenger = await signIn(app, '13800000031');
+    await app.get(DatabaseService).query(
+      `UPDATE passenger SET nickname = $2 WHERE id = $1`,
+      [passenger.id, '林女士'],
+    );
+    const placed = await request(app.getHttpServer())
+      .post(`/passengers/${passenger.id}/orders`)
+      .send(trip)
+      .expect(201);
+
+    const driver = await signInDriver(app, '13800000081');
+    await app.get(DatabaseService).query(
+      `UPDATE driver SET name = $2, vehicle_model = $3, plate = $4 WHERE id = $1`,
+      [driver.id, '陈立', '跑车', '渝A38291'],
+    );
+
+    const listed = await request(app.getHttpServer())
+      .get(`/drivers/${driver.id}/orders/waiting`)
+      .expect(200);
+    expect(listed.body.orders).toEqual([
+      expect.objectContaining({
+        id: placed.body.id,
+        status: 'waiting',
+        passengerName: '林女士',
+        pickup: trip.pickup,
+        destination: trip.destination,
+        fareCents: 1000,
+      }),
+    ]);
+    expect(JSON.stringify(listed.body)).not.toContain('13800000031');
+
+    const accepted = await request(app.getHttpServer())
+      .post(`/drivers/${driver.id}/orders/${placed.body.id}/accept`)
+      .expect(201);
+    expect(accepted.body).toMatchObject({
+      id: placed.body.id,
+      status: 'accepted',
+      passengerName: '林女士',
+      driver: {
+        name: '陈立',
+        vehicleModel: '跑车',
+        plate: '渝A38291',
+        photoUrl: null,
+        vehicleImageUrl: expect.stringMatching(/^\/vehicle-options\/1\/image\?v=/),
+      },
+    });
+
+    const current = await request(app.getHttpServer())
+      .get(`/passengers/${passenger.id}/orders/current`)
+      .expect(200);
+    expect(current.body.order).toMatchObject({
+      id: placed.body.id,
+      status: 'accepted',
+      driver: {
+        name: '陈立',
+        vehicleModel: '跑车',
+        plate: '渝A38291',
+        photoUrl: null,
+        vehicleImageUrl: expect.stringMatching(/^\/vehicle-options\/1\/image\?v=/),
+      },
+    });
+
+    const waiting = await request(app.getHttpServer())
+      .get(`/drivers/${driver.id}/orders/waiting`)
+      .expect(200);
+    expect(waiting.body.orders).toEqual([]);
+
+    const held = await request(app.getHttpServer())
+      .get(`/drivers/${driver.id}/orders/current`)
+      .expect(200);
+    expect(held.body.order.id).toBe(placed.body.id);
+    expect(held.body.order.status).toBe('accepted');
+  });
+
+  it('keeps a second driver from taking an accepted order', async () => {
+    const passenger = await signIn(app, '13800000031');
+    const otherPassenger = await signIn(app, '13800000032');
+    const placed = await request(app.getHttpServer())
+      .post(`/passengers/${passenger.id}/orders`)
+      .send(trip)
+      .expect(201);
+    const other = await request(app.getHttpServer())
+      .post(`/passengers/${otherPassenger.id}/orders`)
+      .send(trip)
+      .expect(201);
+    const first = await signInDriver(app, '13800000081');
+    const second = await signInDriver(app, '13800000082');
+
+    await request(app.getHttpServer())
+      .post(`/drivers/${first.id}/orders/${placed.body.id}/accept`)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/drivers/${second.id}/orders/${placed.body.id}/accept`)
+      .expect(409)
+      .expect((response) => {
+        expect(response.body.message).toBe('订单已被接走');
+      });
+
+    await request(app.getHttpServer())
+      .post(`/drivers/${first.id}/orders/${other.body.id}/accept`)
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.message).toBe('请先完成当前订单');
+      });
+
+    const cancelled = await request(app.getHttpServer())
+      .post(`/passengers/${passenger.id}/orders/${placed.body.id}/cancel`)
+      .expect(201);
+    expect(cancelled.body.status).toBe('cancelled');
+
+    const none = await request(app.getHttpServer())
+      .get(`/passengers/${passenger.id}/orders/current`)
+      .expect(200);
+    expect(none.body).toEqual({ order: null });
+
+    const released = await request(app.getHttpServer())
+      .get(`/drivers/${first.id}/orders/current`)
+      .expect(200);
+    expect(released.body).toEqual({ order: null });
+
+    await request(app.getHttpServer())
+      .post(`/drivers/${first.id}/orders/${other.body.id}/accept`)
+      .expect(201);
+
+    const again = await request(app.getHttpServer())
+      .post(`/passengers/${passenger.id}/orders`)
+      .send(trip)
+      .expect(201);
+    expect(again.body.id).not.toBe(placed.body.id);
+    expect(again.body.status).toBe('waiting');
+  });
+
   it('rejects an unknown passenger and an incomplete trip', async () => {
     await request(app.getHttpServer())
       .post('/passengers/99999/orders')
@@ -148,6 +282,18 @@ describe('passenger trip orders (e2e)', () => {
       });
   });
 });
+
+async function signInDriver(app: INestApplication<App>, phone: string) {
+  await request(app.getHttpServer())
+    .post('/drivers/verification-codes')
+    .send({ phone })
+    .expect(201);
+  const session = await request(app.getHttpServer())
+    .post('/drivers/sessions')
+    .send({ phone, code: '654321' })
+    .expect(201);
+  return session.body as { id: string };
+}
 
 async function signIn(app: INestApplication<App>, phone: string) {
   await request(app.getHttpServer())

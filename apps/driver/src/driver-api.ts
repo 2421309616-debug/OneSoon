@@ -59,6 +59,19 @@ export type DriverEarningsSummary = {
   trips: DriverTripSummary[];
 };
 
+export type DispatchOrder = {
+  id: string;
+  status: "waiting" | "accepted" | "cancelled";
+  passengerName: string;
+  pickup: { name: string; longitude: number; latitude: number };
+  destination: { name: string; longitude: number; latitude: number };
+  distanceMeters: number;
+  durationSeconds: number;
+  fareCents: number;
+  createdAt: string;
+  driver: { name: string | null; vehicleModel: string | null; plate: string | null } | null;
+};
+
 export type OrderOffer = {
   id: string;
   passengerName: string;
@@ -151,11 +164,39 @@ function request<T>(path: string, method: "GET" | "POST" | "PUT", data?: Record<
 
 const API_ROOT = "http://127.0.0.1:3000";
 
-function postAuth<T>(path: string, data: Record<string, string>): Promise<T> {
+export type DriverProfile = {
+  id: string;
+  phone: string;
+  name: string | null;
+  vehicleModel: string | null;
+  plate: string | null;
+  photoUrl: string | null;
+  vehicleImageUrl: string | null;
+  personalComplete: boolean;
+  vehicleComplete: boolean;
+  documentsComplete: boolean;
+  idOnFile: boolean;
+};
+
+export type VehicleOption = {
+  id: number;
+  brand: string;
+  model: string;
+  modelYear: number;
+  colorName: string;
+  view: string;
+  imageUrl: string;
+};
+
+export function apiAsset(path: string): string {
+  return `${API_ROOT}${path}`;
+}
+
+function postAuth<T>(path: string, data?: Record<string, string>, method: "GET" | "POST" = "POST"): Promise<T> {
   return new Promise((resolve, reject) => {
     uni.request({
       url: `${API_ROOT}${path}`,
-      method: "POST",
+      method,
       data,
       header: { "Content-Type": "application/json" },
       success: ({ statusCode, data: body }) => {
@@ -176,6 +217,12 @@ export const driverApi = {
     postAuth<{ accepted: boolean }>("/drivers/verification-codes", { phone }),
   login: (phone: string, code: string) =>
     postAuth<DriverSession>("/drivers/sessions", { phone, code }),
+  listWaitingOrders: (driverId: string) =>
+    postAuth<{ orders: DispatchOrder[] }>(`/drivers/${driverId}/orders/waiting`, undefined, "GET"),
+  currentDispatchOrder: (driverId: string) =>
+    postAuth<{ order: DispatchOrder | null }>(`/drivers/${driverId}/orders/current`, undefined, "GET"),
+  acceptDispatchOrder: (driverId: string, orderId: string) =>
+    postAuth<DispatchOrder>(`/drivers/${driverId}/orders/${orderId}/accept`),
   completeProfile: (
     driverId: string,
     profile: {
@@ -188,6 +235,16 @@ export const driverApi = {
       vehicleLicense: string;
     },
   ) => postAuth<DriverSession>(`/drivers/${driverId}/profile`, profile),
+  savePersonal: (driverId: string, profile: Record<string, string>) =>
+    postAuth<DriverSession>(`/drivers/${driverId}/profile/personal`, profile),
+  saveVehicle: (driverId: string, profile: Record<string, string>) =>
+    postAuth<DriverSession>(`/drivers/${driverId}/profile/vehicle`, profile),
+  saveDocuments: (driverId: string, profile: Record<string, string>) =>
+    postAuth<DriverSession>(`/drivers/${driverId}/profile/documents`, profile),
+  getProfile: (driverId: string) => postAuth<DriverProfile>(`/drivers/${driverId}`, undefined, "GET"),
+  setVehicleType: (driverId: string, vehicleModel: string) =>
+    postAuth<{ accepted: boolean }>(`/drivers/${driverId}/vehicle-type`, { vehicleModel }),
+  listVehicleOptions: () => postAuth<VehicleOption[]>("/vehicle-options", undefined, "GET"),
   getEarnings: (period: "today" | "week" | "month" = "today") =>
     request<DriverEarningsSummary>(`/drivers/me/earnings?date=${period}`, "GET"),
   getTrips: () => request<DriverTripSummary[]>("/drivers/me/trips?date=today", "GET"),

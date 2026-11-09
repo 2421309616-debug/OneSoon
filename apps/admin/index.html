@@ -118,29 +118,108 @@
       }
 
       .panel {
-        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-sizing: border-box;
         flex: 1;
         min-width: 0;
         height: 100%;
+        padding: 12px 16px 16px 12px;
         background: #f4f3ee;
       }
 
+      .topbar,
+      .stage {
+        border: 1px solid #e4e1d8;
+        border-radius: 16px;
+        background: #fbfaf7;
+      }
+
       .topbar {
-        position: absolute;
-        top: 0;
-        left: 6px;
-        right: 8px;
         display: flex;
+        flex: none;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
+        gap: 24px;
         height: 88px;
+        padding: 0 28px 0 22px;
+      }
+
+      .find {
+        position: relative;
+        flex: 0 1 420px;
+        min-width: 160px;
+        height: 44px;
+      }
+
+      .find-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .find-icon {
+        position: absolute;
+        top: 50%;
+        left: 14px;
+        width: 18px;
+        height: 18px;
+        transform: translateY(-50%);
+        color: #5c6158;
+        pointer-events: none;
+      }
+
+      .find-input {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0 16px 0 42px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        background: #f4f3ee;
+        color: #16181c;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .find-input::placeholder {
+        color: #5c6158;
+        font-weight: 400;
+      }
+
+      .find-input:hover {
+        border-color: #d9d6ce;
+      }
+
+      .find-input:focus {
+        outline: none;
+      }
+
+      .find-input:focus-visible {
+        border-color: #16181c;
+        outline: 2px solid #16181c;
+        outline-offset: 2px;
+      }
+
+      ::selection {
+        background: #e7e2d6;
+        color: #16181c;
       }
 
       .user-slot {
         display: flex;
+        flex: none;
         align-items: center;
         height: 72px;
-        margin-right: 36px;
       }
 
       .user-card {
@@ -179,10 +258,441 @@
       }
 
       .user-account {
-        color: #6a6e67;
+        color: #5c6158;
         font-size: 13px;
         font-weight: 400;
         line-height: 16px;
+      }
+
+      .stage {
+        position: relative;
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .stage-status {
+        margin: 28px 32px;
+        color: #3f443e;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .stage-status:empty {
+        display: none;
+      }
+
+      #roster:not([hidden]) {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+        padding: 12px 16px 12px;
+        overflow: hidden;
+      }
+
+      .roster-head {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 4px 4px 8px;
+      }
+
+      .roster-title {
+        margin: 0;
+        color: #16181c;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .roster-table {
+        display: flex;
+        flex: none;
+        flex-direction: column;
+        min-width: 0;
+        width: 100%;
+        border-collapse: collapse;
+        color: #16181c;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .roster-table thead,
+      .roster-table tbody {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .roster-table thead {
+        flex: none;
+      }
+
+      .roster-table tbody {
+        flex: 1;
+      }
+
+      .roster-table tr {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(108px, 1fr));
+        align-items: center;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .roster-table thead tr {
+        flex: none;
+        height: 36px;
+      }
+
+      .roster-table tbody {
+        gap: 4px;
+      }
+
+      .roster-table tbody tr {
+        flex: none;
+        height: 56px;
+        border-radius: 12px;
+      }
+
+      .roster-table th,
+      .roster-table td {
+        min-width: 0;
+        height: auto;
+        padding: 0 12px;
+        overflow: hidden;
+        border: 0;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .roster-table th {
+        color: #5c6158;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .roster-table tbody tr {
+        cursor: pointer;
+      }
+
+      .roster-table tbody tr:hover {
+        background: #fbfaf7;
+      }
+
+      .roster-table tbody tr.is-selected,
+      .roster-table tbody tr.is-selected:hover {
+        background: #ffffff;
+      }
+
+      .roster-table .name-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .roster-table .name-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .roster-table .avatar {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        overflow: hidden;
+        border-radius: 50%;
+        background: #c9ccd3;
+      }
+
+      .roster-table .avatar-image,
+      .roster-table .avatar-placeholder {
+        display: block;
+      }
+
+      .roster-table .avatar-image {
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+      }
+
+      .roster-table .avatar-placeholder {
+        width: 20px;
+        height: 20px;
+      }
+
+      .roster-table tbody tr:focus-visible {
+        outline: 2px solid #16181c;
+        outline-offset: -2px;
+      }
+
+      .roster-note {
+        margin: 20px 12px;
+        color: #3f443e;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .pager {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+      }
+
+      .pager-button {
+        width: 32px;
+        height: 32px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #16181c;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 20px;
+        line-height: 32px;
+        cursor: pointer;
+      }
+
+      .pager-button:hover:not(:disabled) {
+        background: #fbfaf7;
+      }
+
+      .retry-button {
+        height: 36px;
+        padding: 0 14px;
+        border: 1px solid #e4e1d8;
+        border-radius: 12px;
+        background: #fbfaf7;
+        color: #16181c;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .retry-button:hover {
+        background: #f4f3ee;
+      }
+
+      .pager-button:focus-visible,
+      .retry-button:focus-visible {
+        outline: 2px solid #16181c;
+        outline-offset: 2px;
+      }
+
+      .pager-button:disabled {
+        color: #b7b2a8;
+        background: transparent;
+        cursor: default;
+      }
+
+      .pager-status {
+        min-width: 4.5em;
+        color: #3f443e;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+      }
+
+      .stage.is-board-open #roster {
+        box-sizing: border-box;
+        padding-right: 320px;
+      }
+
+      .driver-board {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        display: none;
+        flex-direction: column;
+        width: 320px;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: 16px;
+        background: #ffffff;
+        color: #20212a;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        box-shadow: -12px 0 28px #20232d14;
+        scrollbar-color: #cfcabe #ffffff;
+      }
+
+      .driver-board:not([hidden]) {
+        display: flex;
+      }
+
+      .driver-board .profile-card {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: stretch;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 0;
+        height: 100%;
+        margin: 0;
+        padding: 16px 18px 12px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+
+      .driver-board .profile-identity {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .driver-board .avatar {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        width: 72px;
+        height: 72px;
+        overflow: hidden;
+        border-radius: 50%;
+        background: #c9ccd3;
+        box-shadow: 0 0 0 3px #ffffff, 0 0 0 4px #ece7e7;
+      }
+
+      .driver-board .avatar-image,
+      .driver-board .avatar-placeholder {
+        display: block;
+      }
+
+      .driver-board .avatar-image {
+        width: 72px;
+        height: 72px;
+        object-fit: cover;
+      }
+
+      .driver-board .avatar-placeholder {
+        width: 44px;
+        height: 44px;
+      }
+
+      .driver-board .profile-name,
+      .driver-board .profile-model,
+      .driver-board .profile-plate,
+      .driver-board .profile-error {
+        margin: 0;
+      }
+
+      .driver-board .profile-name {
+        flex: none;
+        color: #20212a;
+        font-size: 20px;
+        font-weight: 750;
+        line-height: 1.2;
+      }
+
+      .driver-board .profile-model {
+        flex: none;
+        color: #4c515c;
+        font-size: 15px;
+        line-height: 1.3;
+      }
+
+      .driver-board .profile-car-wrap {
+        display: flex;
+        flex: 0 1 96px;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 0;
+        max-height: 96px;
+      }
+
+      .driver-board .profile-car {
+        width: 100%;
+        height: 100%;
+        max-height: 96px;
+        object-fit: contain;
+      }
+
+      .driver-board .profile-plate {
+        flex: none;
+        padding: 6px 14px;
+        border: 1px solid #d9dce2;
+        border-radius: 10px;
+        color: #20212a;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .driver-board .profile-plate--empty {
+        border-style: dashed;
+        color: #5c6370;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0;
+      }
+
+      .driver-board .profile-entries {
+        flex: none;
+        width: 100%;
+        margin-top: auto;
+        padding-top: 8px;
+      }
+
+      .driver-board .profile-entry {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        height: 36px;
+        border-top: 1px solid #eceef1;
+      }
+
+      .driver-board .profile-entry-label {
+        color: #20212a;
+        font-size: 14px;
+        font-weight: 650;
+      }
+
+      .driver-board .profile-entry-state {
+        color: #d0121a;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .driver-board .profile-entry-state--done {
+        color: #5c6370;
+        font-weight: 600;
+      }
+
+      .driver-board .profile-error {
+        margin-top: 16px;
+        color: #c5222d;
+        font-size: 13px;
       }
     </style>
   </head>
@@ -265,6 +775,14 @@
       </aside>
       <div class="panel">
         <header class="topbar">
+          <form class="find" role="search">
+            <label class="find-label" for="admin-find">搜索订单、司机或乘客</label>
+            <svg class="find-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16.5 20 20.5" />
+            </svg>
+            <input id="admin-find" class="find-input" type="search" placeholder="搜索订单、司机或乘客" autocomplete="off" enterkeyhint="search" />
+          </form>
           <div class="user-slot">
             <div class="user-card">
               <svg class="user-avatar" viewBox="0 0 60 60" aria-hidden="true">
@@ -286,10 +804,27 @@
             </div>
           </div>
         </header>
+        <main class="stage">
+          <p class="stage-status" id="find-status" aria-live="polite"></p>
+          <div id="roster" hidden></div>
+          <aside id="driver-board" class="driver-board" hidden aria-label="司机资料"></aside>
+        </main>
       </div>
     </div>
     <script>
+      const API_ROOT = "http://127.0.0.1:3000";
       const items = document.querySelectorAll(".nav-item:not(.nav-logout)");
+      const findForm = document.querySelector(".find");
+      const findInput = document.querySelector("#admin-find");
+      const findStatus = document.querySelector("#find-status");
+      const roster = document.querySelector("#roster");
+      const stage = document.querySelector(".stage");
+      const board = document.querySelector("#driver-board");
+      let rosterRequest = 0;
+      let rosterPage = 1;
+      let boardRequest = 0;
+      let selectedDriverId = null;
+
       for (const item of items) {
         item.addEventListener("click", () => {
           for (const other of items) {
@@ -298,6 +833,12 @@
           }
           item.classList.add("is-active");
           item.setAttribute("aria-current", "page");
+          findStatus.textContent = "";
+          if (item.querySelector("span").textContent === "入驻司机") {
+            showDrivers(1);
+          } else {
+            clearRoster();
+          }
         });
       }
 
@@ -305,6 +846,330 @@
         sessionStorage.removeItem("onesoon-admin-user");
         location.replace("login.html");
       });
+
+      findForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        clearRoster();
+        const query = findInput.value.trim();
+        findStatus.textContent = query
+          ? "还没有与「" + query + "」匹配的订单、司机或乘客"
+          : "输入订单号、司机或乘客后再搜索";
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && selectedDriverId) closeBoard();
+      });
+
+      function clearRoster() {
+        rosterRequest += 1;
+        closeBoard();
+        roster.replaceChildren();
+        roster.hidden = true;
+      }
+
+      function showDrivers(page) {
+        const requestId = ++rosterRequest;
+        rosterPage = page;
+        findStatus.textContent = "";
+        roster.hidden = false;
+        roster.replaceChildren(note("正在读取司机"));
+        fetch(API_ROOT + "/drivers?page=" + page)
+          .then((response) => {
+            if (!response.ok) throw new Error("load failed");
+            return response.json();
+          })
+          .then((body) => {
+            if (requestId !== rosterRequest) return;
+            renderDrivers(body);
+          })
+          .catch(() => {
+            if (requestId !== rosterRequest) return;
+            renderLoadError();
+          });
+      }
+
+      function renderDrivers(body) {
+        roster.replaceChildren();
+        const drivers = Array.isArray(body.drivers) ? body.drivers : [];
+        const total = Number(body.total) || 0;
+        const page = Number(body.page) || rosterPage;
+        const pageSize = Number(body.pageSize) || 10;
+        const heading = document.createElement("div");
+        heading.className = "roster-head";
+        const title = document.createElement("h1");
+        title.className = "roster-title";
+        title.textContent = "入驻司机";
+        heading.append(title);
+        if (total > 0) heading.append(pager(page, pageSize, total));
+        roster.append(heading);
+        if (total === 0) {
+          roster.append(note("还没有入驻司机"));
+          return;
+        }
+        const table = document.createElement("table");
+        table.className = "roster-table";
+        table.setAttribute("aria-label", "入驻司机");
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        for (const label of ["编号", "姓名", "手机号", "车牌", "入驻时间"]) {
+          const cell = document.createElement("th");
+          cell.scope = "col";
+          cell.textContent = label;
+          headRow.append(cell);
+        }
+        head.append(headRow);
+        const bodyEl = document.createElement("tbody");
+        for (const driver of drivers) {
+          const row = document.createElement("tr");
+          const driverId = typeof driver.id === "string" ? driver.id : "";
+          row.dataset.id = driverId;
+          row.tabIndex = 0;
+          row.setAttribute("aria-selected", driverId === selectedDriverId ? "true" : "false");
+          if (driverId === selectedDriverId) row.classList.add("is-selected");
+          row.append(
+            textCell(driver.id),
+            nameCell(driver),
+            textCell(driver.phone),
+            textCell(driver.plate),
+            textCell(formatJoined(driver.createdAt)),
+          );
+          row.addEventListener("click", () => openBoard(driverId));
+          row.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            openBoard(driverId);
+          });
+          bodyEl.append(row);
+        }
+        table.append(head, bodyEl);
+        roster.append(table);
+      }
+
+      function openBoard(id) {
+        if (!/^[0-9]{5}$/.test(id)) return;
+        if (selectedDriverId === id) {
+          closeBoard();
+          return;
+        }
+        selectedDriverId = id;
+        markSelected();
+        const requestId = ++boardRequest;
+        stage.classList.add("is-board-open");
+        board.hidden = false;
+        board.replaceChildren(boardStatus("正在读取资料"));
+        fetch(API_ROOT + "/drivers/" + id)
+          .then((response) => {
+            if (!response.ok) throw new Error("load failed");
+            return response.json();
+          })
+          .then((profile) => {
+            if (requestId !== boardRequest) return;
+            renderBoard(profile);
+          })
+          .catch(() => {
+            if (requestId !== boardRequest) return;
+            board.replaceChildren(boardStatus("读取资料失败", true));
+          });
+      }
+
+      function closeBoard() {
+        boardRequest += 1;
+        selectedDriverId = null;
+        board.hidden = true;
+        board.replaceChildren();
+        stage.classList.remove("is-board-open");
+        markSelected();
+      }
+
+      function markSelected() {
+        for (const row of roster.querySelectorAll("tbody tr")) {
+          const selected = row.dataset.id === selectedDriverId;
+          row.classList.toggle("is-selected", selected);
+          row.setAttribute("aria-selected", selected ? "true" : "false");
+        }
+      }
+
+      function renderBoard(profile) {
+        const card = document.createElement("div");
+        card.className = "profile-card";
+        const identity = document.createElement("div");
+        identity.className = "profile-identity";
+        identity.append(
+          avatar(profile.photoUrl),
+          line("profile-name", profile.name, "未填写姓名"),
+          line("profile-model", profile.vehicleModel, "未填写车型"),
+        );
+        const car = assetUrl(profile.vehicleImageUrl, "car");
+        if (car) {
+          const wrap = document.createElement("div");
+          wrap.className = "profile-car-wrap";
+          const image = document.createElement("img");
+          image.className = "profile-car";
+          image.alt = "跑车示意图";
+          image.src = car;
+          wrap.append(image);
+          identity.append(wrap);
+        }
+        const plate = line("profile-plate", profile.plate, "未填写车牌");
+        if (!profile.plate) plate.classList.add("profile-plate--empty");
+        identity.append(plate);
+        const entries = document.createElement("div");
+        entries.className = "profile-entries";
+        for (const entry of [
+          ["个人资料", profile.personalComplete === true],
+          ["车辆", profile.vehicleComplete === true],
+          ["证件", profile.documentsComplete === true],
+        ]) {
+          const row = document.createElement("div");
+          row.className = "profile-entry";
+          const label = document.createElement("span");
+          label.className = "profile-entry-label";
+          label.textContent = entry[0];
+          const state = document.createElement("span");
+          state.className = "profile-entry-state" + (entry[1] ? " profile-entry-state--done" : "");
+          state.textContent = entry[1] ? "已完善" : "去补充";
+          row.append(label, state);
+          entries.append(row);
+        }
+        card.append(identity, entries);
+        board.replaceChildren(card);
+      }
+
+      function avatar(photoUrl) {
+        const frame = document.createElement("div");
+        frame.className = "avatar";
+        const photo = assetUrl(photoUrl, "photo");
+        if (photo) {
+          const image = document.createElement("img");
+          image.className = "avatar-image";
+          image.alt = "个人照片";
+          image.src = photo;
+          frame.append(image);
+          return frame;
+        }
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.setAttribute("class", "avatar-placeholder");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("aria-hidden", "true");
+        const head = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        head.setAttribute("cx", "12");
+        head.setAttribute("cy", "7.6");
+        head.setAttribute("r", "3.15");
+        head.setAttribute("fill", "#FFFFFF");
+        const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        body.setAttribute("fill", "#FFFFFF");
+        body.setAttribute("d", "M6.4 16.7c0-1.75 2.25-3.15 5.6-3.15s5.6 1.4 5.6 3.15v1.4c0 .95-.75 1.7-1.7 1.7H8.1c-.95 0-1.7-.75-1.7-1.7v-1.4z");
+        icon.append(head, body);
+        frame.append(icon);
+        return frame;
+      }
+
+      function line(className, value, empty) {
+        const text = document.createElement("p");
+        text.className = className;
+        const shown = value === null || value === undefined || value === "" ? "" : String(value);
+        text.textContent = shown || empty;
+        return text;
+      }
+
+      function boardStatus(message, failed) {
+        const card = document.createElement("div");
+        card.className = "profile-card";
+        const text = document.createElement("p");
+        text.className = failed ? "profile-error" : "profile-model";
+        text.textContent = message;
+        card.append(text);
+        return card;
+      }
+
+      function assetUrl(path, kind) {
+        if (typeof path !== "string" || path.includes("..")) return "";
+        const photo = /^\/drivers\/[0-9]{5}\/photo\?v=[\w.~%-]+$/;
+        const car = /^\/vehicle-options\/\d+\/image\?v=[\w.~%-]+$/;
+        if (kind === "photo" && photo.test(path)) return API_ROOT + path;
+        if (kind === "car" && car.test(path)) return API_ROOT + path;
+        return "";
+      }
+
+      function renderLoadError() {
+        roster.replaceChildren();
+        const title = document.createElement("h1");
+        title.className = "roster-title";
+        title.textContent = "入驻司机";
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "retry-button";
+        retry.textContent = "重试";
+        retry.addEventListener("click", () => showDrivers(rosterPage));
+        const message = note("司机列表加载失败");
+        message.append(" ");
+        message.append(retry);
+        roster.append(title, message);
+      }
+
+      function pager(page, pageSize, total) {
+        const nav = document.createElement("nav");
+        nav.className = "pager";
+        nav.setAttribute("aria-label", "分页");
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        const prev = pageButton("<", "上一页", page <= 1, () => showDrivers(page - 1));
+        const next = pageButton(">", "下一页", page >= pages, () => showDrivers(page + 1));
+        const status = document.createElement("span");
+        status.className = "pager-status";
+        status.textContent = page + " / " + pages;
+        status.setAttribute("aria-label", "第 " + page + " 页，共 " + pages + " 页");
+        nav.append(prev, status, next);
+        return nav;
+      }
+
+      function pageButton(label, name, disabled, onClick) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "pager-button";
+        button.textContent = label;
+        button.setAttribute("aria-label", name);
+        button.disabled = disabled;
+        button.addEventListener("click", onClick);
+        return button;
+      }
+
+      function nameCell(driver) {
+        const cell = document.createElement("td");
+        cell.className = "name-cell";
+        const name = document.createElement("span");
+        name.className = "name-text";
+        const shown = driver.name === null || driver.name === undefined || driver.name === "" ? "" : String(driver.name);
+        name.textContent = shown || "—";
+        cell.append(avatar(driver.photoUrl), name);
+        return cell;
+      }
+
+      function textCell(value) {
+        const cell = document.createElement("td");
+        const text = value === null || value === undefined || value === "" ? "" : String(value);
+        cell.textContent = text || "—";
+        return cell;
+      }
+
+      function note(message) {
+        const paragraph = document.createElement("p");
+        paragraph.className = "roster-note";
+        paragraph.textContent = message;
+        return paragraph;
+      }
+
+      function formatJoined(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        const parts = new Intl.DateTimeFormat("zh-CN", {
+          timeZone: "Asia/Shanghai",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).formatToParts(date);
+        const pick = (type) => parts.find((part) => part.type === type)?.value ?? "";
+        return pick("year") + "-" + pick("month") + "-" + pick("day");
+      }
     </script>
   </body>
 </html>

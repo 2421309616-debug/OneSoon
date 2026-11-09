@@ -4,6 +4,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { enterWithCode, requestVerificationCode } from "@/passenger-api";
 import { readPassenger, savePassenger } from "@/passenger-session";
 
+const dialCode = ref("+86");
 const phone = ref("");
 const code = ref("");
 const error = ref("");
@@ -11,8 +12,8 @@ const notice = ref("");
 const requesting = ref(false);
 const entering = ref(false);
 
-const phoneReady = computed(() => phone.value.trim() !== "");
-const codeReady = computed(() => /^\d{6}$/.test(code.value.trim()));
+const canRequest = computed(() => phone.value.trim().length >= 6 && !requesting.value && !entering.value);
+const canSubmit = computed(() => phone.value.trim().length >= 6 && /^\d{6}$/.test(code.value.trim()) && !entering.value);
 
 onShow(() => {
   if (readPassenger()) {
@@ -21,6 +22,7 @@ onShow(() => {
 });
 
 async function requestCode() {
+  if (!canRequest.value) return;
   error.value = "";
   notice.value = "";
   requesting.value = true;
@@ -35,6 +37,7 @@ async function requestCode() {
 }
 
 async function enterHome() {
+  if (!canSubmit.value) return;
   error.value = "";
   entering.value = true;
   try {
@@ -58,68 +61,52 @@ async function enterHome() {
     </view>
 
     <view class="form">
-      <view class="field">
-        <text class="label" id="passenger-phone-label">手机号</text>
-        <view class="phone-row">
-          <input
-            id="passenger-phone"
-            v-model="phone"
-            class="input"
-            type="tel"
-            maxlength="20"
-            placeholder="请输入手机号"
-            placeholder-class="placeholder"
-            confirm-type="next"
-            aria-labelledby="passenger-phone-label"
-            :disabled="requesting || entering"
-          />
-          <button
-            class="code-button"
-            hover-class="code-button--pressed"
-            :disabled="!phoneReady || requesting || entering"
-            @tap="requestCode"
-          >
-            <text class="code-button-sizer" aria-hidden="true">获取验证码</text>
-            <text class="code-button-label">{{ requesting ? "获取中" : "获取验证码" }}</text>
-          </button>
-        </view>
+      <text class="label" id="passenger-phone-label">手机号</text>
+      <view class="phone-row">
+        <input
+          v-model="dialCode"
+          class="input dial-input"
+          maxlength="4"
+          aria-label="国际区号"
+        />
+        <input
+          id="passenger-phone"
+          v-model="phone"
+          class="input phone-input"
+          type="tel"
+          maxlength="20"
+          placeholder="请输入手机号"
+          placeholder-class="placeholder"
+          confirm-type="next"
+          aria-labelledby="passenger-phone-label"
+          :disabled="requesting || entering"
+        />
       </view>
-
-      <view class="field">
-        <text class="label" id="passenger-code-label">验证码</text>
-        <view class="phone-row">
-          <input
-            id="passenger-code"
-            v-model="code"
-            class="input input--code"
-            type="tel"
-            maxlength="6"
-            inputmode="numeric"
-            placeholder="请输入 6 位验证码"
-            placeholder-class="placeholder"
-            confirm-type="done"
-            aria-labelledby="passenger-code-label"
-            :disabled="entering"
-            @confirm="codeReady && enterHome()"
-          />
-          <view class="code-button code-button--spacer" aria-hidden="true">获取验证码</view>
-        </view>
+      <text class="label" id="passenger-code-label">验证码</text>
+      <view class="code-row">
+        <input
+          id="passenger-code"
+          v-model="code"
+          class="input"
+          type="tel"
+          maxlength="6"
+          inputmode="numeric"
+          placeholder="请输入 6 位验证码"
+          placeholder-class="placeholder"
+          confirm-type="done"
+          aria-labelledby="passenger-code-label"
+          :disabled="entering"
+          @confirm="enterHome"
+        />
+        <button class="code-button" hover-class="code-button--pressed" :disabled="!canRequest" @tap="requestCode">
+          {{ requesting ? "发送中" : "获取验证码" }}
+        </button>
       </view>
-
       <text v-if="notice" class="notice">{{ notice }}</text>
       <text v-if="error" class="error" role="alert">{{ error }}</text>
-
-      <view class="phone-row">
-        <button
-          class="button button--primary"
-          hover-class="button--pressed"
-          :disabled="!phoneReady || !codeReady || requesting || entering"
-          @tap="enterHome"
-        >
-          {{ entering ? "正在登录" : "登录" }}
-        </button>
-        <view class="code-button code-button--spacer" aria-hidden="true">获取验证码</view>
-      </view>
+      <button class="button button--primary" hover-class="button--pressed" :disabled="!canSubmit" @tap="enterHome">
+        {{ entering ? "正在登录…" : "登录/注册" }}
+      </button>
     </view>
     </view>
   </view>
@@ -158,135 +145,127 @@ async function enterHome() {
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   margin-top: 48px;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .label {
-  color: #1a1a1a;
-  font-size: 16px;
-  font-weight: 600;
+  display: block;
+  margin: 14px 0 7px;
+  color: #252630;
+  font-size: 13px;
+  font-weight: 650;
   line-height: 1.4;
 }
 
+.form .label:first-child {
+  margin-top: 0;
+}
+
 .input {
+  box-sizing: border-box;
   width: 100%;
   height: 48px;
-  padding: 0 16px;
-  border: 2px solid #d0121a;
-  border-radius: 12px;
+  padding: 0 13px;
+  border: 1px solid #d9dce2;
+  border-radius: 11px;
   background: #ffffff;
-  color: #1a1a1a;
-  font-size: 16px;
+  color: #20212a;
+  font-size: 15px;
   caret-color: #d0121a;
 }
 
 .input:focus {
-  outline: 3px solid rgba(208, 18, 26, 0.28);
-  outline-offset: 2px;
-}
-
-.input--code {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.2em;
+  border-color: #d0121a;
+  outline: 2px solid #f0c5c8;
+  outline-offset: 1px;
 }
 
 .placeholder {
-  color: #5c6370;
-  letter-spacing: 0;
+  color: #8b909a;
+}
+
+.notice,
+.error {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .notice {
-  color: #3c4149;
-  font-size: 16px;
-  line-height: 1.5;
+  color: #198357;
 }
 
 .error {
-  color: #d0121a;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.5;
+  color: #c5222d;
 }
 
 .button {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   min-height: 48px;
-  margin: 0;
-  padding: 0 16px;
+  margin: 23px 0 0;
+  padding: 0 14px;
+  border: 0;
   border-radius: 12px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1.2;
   cursor: pointer;
 }
 
-.button::after {
+.button::after,
+.code-button::after {
   border: none;
 }
 
-.phone-row {
+.phone-row,
+.code-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .phone-row .input,
-.phone-row .button {
-  flex: 1;
+.code-row .input,
+.code-button {
+  box-sizing: border-box;
+}
+
+.phone-row .phone-input,
+.code-row .input {
+  flex: 1 1 auto;
   width: auto;
   min-width: 0;
 }
 
+.dial-input {
+  flex: 0 0 68px;
+  width: 68px;
+  padding: 0;
+  text-align: center;
+}
+
 .code-button {
-  position: relative;
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
   height: 48px;
   margin: 0;
-  padding: 0 12px;
-  border: 1px solid #d0121a;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #d0121a;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 0 11px;
+  border: 1px solid #f0c5c8;
+  border-radius: 11px;
+  background: #fff6f6;
+  color: #c5222d;
+  font-size: 12px;
+  font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.code-button-sizer {
-  visibility: hidden;
-}
-
-.code-button-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.code-button--spacer {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.code-button::after {
-  border: none;
 }
 
 .code-button[disabled] {
@@ -294,30 +273,19 @@ async function enterHome() {
   cursor: not-allowed;
 }
 
-.code-button:focus-visible {
-  outline: 3px solid rgba(208, 18, 26, 0.28);
-  outline-offset: 2px;
-}
-
 .code-button--pressed {
   opacity: 0.82;
 }
 
 .button--primary {
-  margin-top: 8px;
-  border: 0;
   background: #d0121a;
   color: #ffffff;
 }
 
 .button[disabled] {
-  opacity: 0.45;
+  background: #e7e8eb;
+  color: #a3a8b2;
   cursor: not-allowed;
-}
-
-.button:focus-visible {
-  outline: 3px solid rgba(208, 18, 26, 0.28);
-  outline-offset: 2px;
 }
 
 .button--pressed {

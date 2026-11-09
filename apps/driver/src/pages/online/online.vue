@@ -57,18 +57,11 @@ async function confirmSafetyHelp() {
     <DriverPageHeader title="听单中心" />
     <scroll-view class="online-scroll" scroll-y>
       <view class="driver-page-body">
-        <view class="online-heading"><text class="driver-eyebrow">{{ online ? "在线接单中" : "出车准备" }}</text><text class="driver-title">{{ online ? "保持在线，安心接单" : "准备好开始今天的行程了吗？" }}</text><text class="driver-muted">{{ online ? "系统正在为你匹配附近订单" : "出车前检查车辆、证件与手机电量" }}</text></view>
-        <view class="driver-map">
-          <view class="driver-map-road driver-map-road--a" /><view class="driver-map-road driver-map-road--b" /><view class="driver-map-road driver-map-road--c" /><view class="driver-map-route" /><view class="driver-map-pin driver-map-pin--car">车</view><view class="driver-map-pin driver-map-pin--place">热</view>
-          <view class="map-location"><text class="live-dot" /><text>{{ online ? "丰都城区 · 正在听单" : "丰都城区 · 当前定位" }}</text></view>
-          <view class="map-attribution">地图示意</view>
-        </view>
-        <button class="dispatch-entry" @tap="openDispatch"><text class="dispatch-entry-title">{{ online ? "查看附近订单" : "预览派单大厅" }}</text><text class="dispatch-entry-sub">查看路线、接驾距离和预估收入</text><text class="entry-arrow">›</text></button>
-        <view class="driver-card advice-card"><text class="advice-icon">i</text><text>接单后先确认上车点，行驶中请注意安全，避免操作手机。</text></view>
         <view class="driver-card today-card">
           <view class="driver-between"><text class="driver-section-title">今日表现</text><button class="text-link" @tap="openEarnings">收入明细 ›</button></view>
           <view class="driver-stat-grid"><view class="driver-stat"><text class="driver-stat-value">{{ trips }}</text><text class="driver-stat-label">完成订单</text></view><view class="driver-stat"><text class="driver-stat-value">¥{{ income }}</text><text class="driver-stat-label">今日流水</text></view><view class="driver-stat"><text class="driver-stat-value">98分</text><text class="driver-stat-label">服务评分</text></view></view>
         </view>
+        <button class="dispatch-entry" @tap="openDispatch"><text class="dispatch-entry-title">{{ online ? "查看附近订单" : "预览派单大厅" }}</text><text class="dispatch-entry-sub">查看路线、接驾距离和预估收入</text><text class="entry-arrow">›</text></button>
       </view>
     </scroll-view>
     <view v-if="online" class="driver-fixed-action online-fixed-action">
@@ -82,11 +75,6 @@ async function confirmSafetyHelp() {
 <style scoped>
 @import "@/styles/driver-pages.css";
 .online-scroll { flex: 1; min-height: 0; }
-.online-heading { margin-bottom: 13px; }
-.driver-map { min-height: 42vh; margin-bottom: 12px; }
-.map-location { position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 7px; padding: 9px 11px; border: 1px solid #e1e4e7; border-radius: 11px; background: #ffffffed; color: #333641; font-size: 11px; }
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #35bc81; }
-.map-attribution { position: absolute; right: 10px; bottom: 10px; color: #737987; font-size: 10px; }
 .today-card { padding: 12px 14px; }
 .text-link { margin: 0; padding: 4px 0; border: 0; background: transparent; color: #c5222d; font-size: 12px; }
 .text-link::after { border: 0; }
@@ -94,8 +82,6 @@ async function confirmSafetyHelp() {
 .today-card .driver-stat { flex: 1; padding: 4px 3px; border-radius: 0; background: transparent; }
 .today-card .driver-stat-value { font-size: 16px; }
 .today-card .driver-stat-label { margin-top: 2px; font-size: 10px; }
-.advice-card { display: flex; align-items: center; gap: 9px; color: #626977; font-size: 11px; line-height: 1.45; background: #fff; }
-.advice-icon { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; background: #e8eaf0; color: #596171; font-size: 12px; font-weight: 700; }
 .dispatch-entry { position: relative; display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin: 0 0 12px; padding: 15px 40px 15px 15px; border: 1px solid #e0e2e7; border-radius: 14px; background: #fff; text-align: left; }
 .dispatch-entry::after { border: 0; }
 .dispatch-entry-title { color: #252630; font-size: 14px; font-weight: 700; }

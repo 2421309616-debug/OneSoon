@@ -5,9 +5,10 @@ import { DatabaseModule } from './database/database.module.js';
 import { DriversModule } from './drivers/drivers.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PassengersModule } from './passengers/passengers.module.js';
+import { VehiclesModule } from './vehicles/vehicles.module.js';
 
 @Module({
-  imports: [DatabaseModule, PassengersModule, OrdersModule, DriversModule],
+  imports: [DatabaseModule, PassengersModule, OrdersModule, DriversModule, VehiclesModule],
   controllers: [AppController],
   providers: [AppService],
 })

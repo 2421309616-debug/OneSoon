@@ -2,11 +2,11 @@
 import { nextTick, ref } from "vue";
 import { onReady, onShow } from "@dcloudio/uni-app";
 import { driverApi } from "@/driver-api";
-import { requireDriver } from "@/driver-session";
+import { isCertificationSkipped, readDriver, requireDriver } from "@/driver-session";
 
 onShow(() => {
   const driver = requireDriver();
-  if (driver && !driver.profileComplete) {
+  if (driver && !driver.profileComplete && !isCertificationSkipped(driver.id)) {
     uni.reLaunch({ url: "/pages/certification/certification" });
   }
 });
@@ -57,6 +57,11 @@ function openPage(path: string) {
 }
 
 async function startListening() {
+  const driver = readDriver();
+  if (!driver?.profileComplete) {
+    uni.showModal({ title: "请补充个人信息", showCancel: false, confirmText: "知道了", confirmColor: "#D0121A" });
+    return;
+  }
   try { await driverApi.setAvailability(true); } catch { /* 本地演示状态继续 */ }
   uni.setStorageSync("onesoon-driver-online", true);
   uni.navigateTo({ url: "/pages/online/online" });
@@ -204,7 +209,7 @@ onReady(() => {
 <template>
   <view class="screen">
     <view class="titlebar">
-      <button class="account" role="button" hover-class="account--pressed" aria-label="司机账号" @tap="openPage('/pages/login/login')">
+      <button class="account" role="button" hover-class="account--pressed" aria-label="个人中心" @tap="openPage('/pages/profile/profile')">
         <image class="account-icon" src="/static/icons/person.svg" mode="aspectFit" aria-hidden="true" />
       </button>
       <view class="brand">

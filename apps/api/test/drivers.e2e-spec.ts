@@ -164,6 +164,55 @@ describe('driver login (e2e)', () => {
       });
   });
 
+  it('lists stored drivers ten per page without documents', async () => {
+    const database = app.get(DatabaseService);
+    for (let index = 1; index <= 12; index += 1) {
+      const incomplete = index === 1;
+      await database.query(
+        `INSERT INTO driver (phone, name, vehicle_model, plate, created_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          `1390000${String(index).padStart(4, '0')}`,
+          incomplete ? null : `司机${index}`,
+          incomplete ? null : '轿车',
+          incomplete ? null : `渝A${String(index).padStart(5, '0')}`,
+          new Date(Date.UTC(2026, 0, index)),
+        ],
+      );
+    }
+
+    const first = await request(app.getHttpServer()).get('/drivers').query({ page: '1' }).expect(200);
+    expect(first.body).toMatchObject({ page: 1, pageSize: 10, total: 12 });
+    expect(first.body.drivers).toHaveLength(10);
+    expect(first.body.drivers[0]).toEqual({
+      id: '00012',
+      phone: '13900000012',
+      name: '司机12',
+      vehicleModel: '轿车',
+      plate: '渝A00012',
+      photoUrl: null,
+      createdAt: '2026-01-12T00:00:00.000Z',
+    });
+    expect(Object.keys(first.body.drivers[0]).sort()).toEqual([
+      'createdAt',
+      'id',
+      'name',
+      'phone',
+      'photoUrl',
+      'plate',
+      'vehicleModel',
+    ]);
+
+    const second = await request(app.getHttpServer()).get('/drivers').query({ page: '2' }).expect(200);
+    expect(second.body.drivers.map((driver: { id: string }) => driver.id)).toEqual(['00002', '00001']);
+    expect(second.body.drivers[1]).toMatchObject({
+      id: '00001',
+      name: null,
+      vehicleModel: null,
+      plate: null,
+    });
+  });
+
   it('rejects a missing or wrong code', async () => {
     const phone = '13800000042';
     await request(app.getHttpServer())
