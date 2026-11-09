@@ -1,9 +1,16 @@
 const STORAGE_KEY = "onesoon-driver";
+const SKIP_KEY = "onesoon-driver-certification-skipped";
 
-let entered = false;
+export function skipCertification(driverId: string) {
+  uni.setStorageSync(SKIP_KEY, driverId);
+}
 
-export function markDriverEntered() {
-  entered = true;
+export function clearCertificationSkip(driverId: string) {
+  if (uni.getStorageSync(SKIP_KEY) === driverId) uni.removeStorageSync(SKIP_KEY);
+}
+
+export function isCertificationSkipped(driverId: string) {
+  return uni.getStorageSync(SKIP_KEY) === driverId;
 }
 
 export type DriverSession = {
@@ -27,7 +34,7 @@ export function saveDriver(driver: DriverSession) {
 
 export function requireDriver(): DriverSession | null {
   const driver = readDriver();
-  if (!driver || !entered) {
+  if (!driver) {
     uni.reLaunch({ url: "/pages/login/login" });
     return null;
   }

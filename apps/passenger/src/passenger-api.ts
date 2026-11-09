@@ -2,6 +2,10 @@ import type { PassengerSession } from "./passenger-session";
 
 const API_ROOT = "http://127.0.0.1:3000";
 
+export function apiAsset(path: string) {
+  return `${API_ROOT}${path}`;
+}
+
 type ErrorBody = {
   message?: string | string[];
 };
@@ -82,13 +86,21 @@ type TripPlace = {
 
 export type TripOrder = {
   id: string;
-  status: "waiting" | "cancelled";
+  status: "waiting" | "accepted" | "cancelled";
+  passengerName: string;
   pickup: TripPlace;
   destination: TripPlace;
   distanceMeters: number;
   durationSeconds: number;
   fareCents: number;
   createdAt: string;
+  driver: {
+    name: string | null;
+    vehicleModel: string | null;
+    plate: string | null;
+    photoUrl: string | null;
+    vehicleImageUrl: string | null;
+  } | null;
 };
 
 export function placeOrder(

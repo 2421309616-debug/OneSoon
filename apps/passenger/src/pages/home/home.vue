@@ -17,7 +17,7 @@ onShow(() => {
   if (!passenger) return;
   fetchCurrentOrder(passenger.id)
     .then(({ order }) => {
-      if (order) uni.reLaunch({ url: "/pages/waiting/waiting" });
+      if (order?.status === "waiting") uni.reLaunch({ url: "/pages/waiting/waiting" });
     })
     .catch(() => {});
 });
@@ -97,7 +97,25 @@ function resetFlowLayout() {
   settled.value = true;
 }
 
-function openDestination() {
+let openingDestination = false;
+
+async function openDestination() {
+  if (openingDestination) return;
+  const passenger = requirePassenger();
+  if (!passenger) return;
+  openingDestination = true;
+  try {
+    const { order } = await fetchCurrentOrder(passenger.id);
+    if (order?.status === "accepted") {
+      uni.navigateTo({ url: "/pages/waiting/waiting" });
+      return;
+    }
+  } catch {
+    uni.showToast({ title: "订单状态获取失败", icon: "none" });
+    return;
+  } finally {
+    openingDestination = false;
+  }
   uni.navigateTo({ url: "/pages/destination/destination" });
 }
 

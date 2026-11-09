@@ -1,36 +1,64 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import DriverPageHeader from "@/components/DriverPageHeader.vue";
-import { demoOffers, driverApi, type OrderOffer } from "@/driver-api";
+import { driverApi, type DispatchOrder } from "@/driver-api";
+import { requireDriver } from "@/driver-session";
 
-const offers = ref<OrderOffer[]>([]);
+const offers = ref<DispatchOrder[]>([]);
+const held = ref<DispatchOrder | null>(null);
 const loading = ref(false);
+const acceptingId = ref("");
+const error = ref("");
+
+function kilometers(meters: number) {
+  return (meters / 1000).toFixed(1);
+}
+
+function minutes(seconds: number) {
+  return Math.max(1, Math.round(seconds / 60));
+}
+
+function yuan(cents: number) {
+  return (cents / 100).toFixed(0);
+}
 
 async function loadOffers() {
+  const driver = requireDriver();
+  if (!driver) return;
   loading.value = true;
+  error.value = "";
   try {
-    offers.value = (await driverApi.getOrderOffers()) ?? demoOffers;
-  } catch {
-    offers.value = demoOffers;
-    uni.showToast({ title: "后端暂不可用，显示演示订单", icon: "none" });
+    const current = await driverApi.currentDispatchOrder(driver.id);
+    held.value = current.order;
+    offers.value = current.order ? [] : (await driverApi.listWaitingOrders(driver.id)).orders;
+  } catch (cause) {
+    held.value = null;
+    offers.value = [];
+    error.value = cause instanceof Error ? cause.message : "订单加载失败";
   } finally {
     loading.value = false;
   }
 }
 
-async function accept(offer: OrderOffer) {
+async function accept(offer: DispatchOrder) {
+  const driver = requireDriver();
+  if (!driver || acceptingId.value) return;
+  acceptingId.value = offer.id;
   try {
-    await driverApi.acceptOffer(offer.id);
-  } catch {
-    uni.showToast({ title: "后端暂不可用，按演示流程继续", icon: "none" });
+    held.value = await driverApi.acceptDispatchOrder(driver.id, offer.id);
+    offers.value = [];
+    error.value = "";
+  } catch (cause) {
+    uni.showToast({ title: cause instanceof Error ? cause.message : "接单失败", icon: "none" });
+    await loadOffers();
+  } finally {
+    acceptingId.value = "";
   }
-  uni.navigateTo({ url: `/pages/trip/trip?orderId=${encodeURIComponent(offer.id)}&phase=pickup` });
 }
 
-async function decline(offer: OrderOffer) {
-  try { await driverApi.declineOffer(offer.id); } catch { /* 演示模式下本地移除订单 */ }
+function decline(offer: DispatchOrder) {
   offers.value = offers.value.filter((item) => item.id !== offer.id);
-  uni.showToast({ title: "已暂不接此单", icon: "none" });
+  uni.showToast({ title: "已跳过此单", icon: "none" });
 }
 
 function backOnline() { uni.redirectTo({ url: "/pages/online/online" }); }
@@ -43,24 +71,41 @@ onMounted(loadOffers);
     <scroll-view class="dispatch-scroll" scroll-y>
       <view class="driver-page-body">
         <view class="dispatch-intro">
-          <text class="driver-eyebrow">附近订单</text>
-          <text class="driver-title">挑选合适的行程</text>
-          <text class="driver-muted">接单前请确认距离、路线和预计收入</text>
+          <text class="driver-eyebrow">{{ held ? "当前订单" : "等待接单" }}</text>
+          <text class="driver-title">{{ held ? "你已接下一笔订单" : "挑选合适的行程" }}</text>
+          <text class="driver-muted">{{ held ? "上车点和目的地如下" : "接单前请确认路线和预估车费" }}</text>
         </view>
-        <view v-if="loading && !offers.length" class="driver-card driver-empty">正在获取附近订单…</view>
-        <view v-for="offer in offers" :key="offer.id" class="driver-card offer-card">
+        <view v-if="loading && !held && !offers.length" class="driver-card driver-empty">正在获取订单…</view>
+        <view v-else-if="error" class="driver-card driver-empty">{{ error }}</view>
+        <view v-else-if="held" class="driver-card offer-card">
           <view class="driver-between">
-            <view><text class="driver-tag">即时订单</text><text class="offer-id">订单 {{ offer.id }}</text></view>
-            <view class="offer-fare"><text>预估收入</text><strong>¥{{ offer.estimatedFare.toFixed(2) }}</strong></view>
+            <view><text class="driver-tag">已接单</text><text class="offer-id">订单 {{ held.id }}</text></view>
+            <view class="offer-fare"><text>预估</text><strong>¥{{ yuan(held.fareCents) }}</strong></view>
           </view>
-          <view class="route-item"><view class="route-dot route-dot--pickup">上</view><view class="route-copy"><text class="route-label">接乘客 · {{ offer.pickupDistanceKm }} km</text><text class="route-address">{{ offer.pickup }}</text></view></view>
+          <view class="route-item"><view class="route-dot route-dot--pickup">上</view><view class="route-copy"><text class="route-label">上车点</text><text class="route-address">{{ held.pickup.name }}</text></view></view>
           <view class="route-connector" />
-          <view class="route-item"><view class="route-dot route-dot--destination">终</view><view class="route-copy"><text class="route-label">目的地 · {{ offer.tripDistanceKm }} km / {{ offer.estimatedMinutes }} 分钟</text><text class="route-address">{{ offer.destination }}</text></view></view>
+          <view class="route-item"><view class="route-dot route-dot--destination">终</view><view class="route-copy"><text class="route-label">目的地 · {{ kilometers(held.distanceMeters) }} km / {{ minutes(held.durationSeconds) }} 分钟</text><text class="route-address">{{ held.destination.name }}</text></view></view>
           <view class="driver-divider" />
-          <view class="driver-between offer-meta"><text>乘客 {{ offer.passengerName }} · ★ 4.9</text><text>约 {{ offer.estimatedMinutes }} 分钟</text></view>
-          <view class="offer-actions"><button class="driver-secondary" @tap="decline(offer)">暂不接</button><button class="driver-primary" @tap="accept(offer)">接单并出发</button></view>
+          <view class="offer-meta"><text>乘客 {{ held.passengerName }}</text></view>
         </view>
-        <view v-if="!loading && !offers.length" class="driver-card driver-empty">暂时没有新订单，刷新看看</view>
+        <template v-else>
+          <view v-for="offer in offers" :key="offer.id" class="driver-card offer-card">
+            <view class="driver-between">
+              <view><text class="driver-tag">等待接单</text><text class="offer-id">订单 {{ offer.id }}</text></view>
+              <view class="offer-fare"><text>预估</text><strong>¥{{ yuan(offer.fareCents) }}</strong></view>
+            </view>
+            <view class="route-item"><view class="route-dot route-dot--pickup">上</view><view class="route-copy"><text class="route-label">上车点</text><text class="route-address">{{ offer.pickup.name }}</text></view></view>
+            <view class="route-connector" />
+            <view class="route-item"><view class="route-dot route-dot--destination">终</view><view class="route-copy"><text class="route-label">目的地 · {{ kilometers(offer.distanceMeters) }} km / {{ minutes(offer.durationSeconds) }} 分钟</text><text class="route-address">{{ offer.destination.name }}</text></view></view>
+            <view class="driver-divider" />
+            <view class="offer-meta"><text>乘客 {{ offer.passengerName }}</text></view>
+            <view class="offer-actions">
+              <button class="driver-secondary" @tap="decline(offer)">暂不接</button>
+              <button class="driver-primary" :disabled="acceptingId === offer.id" @tap="accept(offer)">{{ acceptingId === offer.id ? "接单中" : "接单" }}</button>
+            </view>
+          </view>
+          <view v-if="!loading && !offers.length" class="driver-card driver-empty">暂时没有等待接单的订单</view>
+        </template>
       </view>
     </scroll-view>
     <view class="dispatch-bottom"><button class="driver-secondary" @tap="backOnline">返回听单页</button></view>

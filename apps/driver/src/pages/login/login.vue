@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import { driverApi } from "@/driver-api";
-import { markDriverEntered, saveDriver } from "@/driver-session";
+import { isCertificationSkipped, readDriver, saveDriver, type DriverSession } from "@/driver-session";
 
 const dialCode = ref("+86");
 const phone = ref("");
@@ -12,6 +13,15 @@ const requesting = ref(false);
 const submitting = ref(false);
 const canRequest = computed(() => phone.value.trim().length >= 6 && !requesting.value && !submitting.value);
 const canSubmit = computed(() => phone.value.trim().length >= 6 && /^\d{6}$/.test(code.value.trim()) && !submitting.value);
+
+function destination(driver: DriverSession) {
+  return driver.profileComplete || isCertificationSkipped(driver.id) ? "/pages/home/home" : "/pages/certification/certification";
+}
+
+onShow(() => {
+  const driver = readDriver();
+  if (driver) uni.reLaunch({ url: destination(driver) });
+});
 
 async function requestCode() {
   if (!canRequest.value) return;
@@ -35,10 +45,7 @@ async function login() {
   try {
     const session = await driverApi.login(phone.value.trim(), code.value.trim());
     saveDriver(session);
-    markDriverEntered();
-    uni.reLaunch({
-      url: session.profileComplete ? "/pages/home/home" : "/pages/certification/certification",
-    });
+    uni.reLaunch({ url: destination(session) });
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : "登录失败，请检查验证码。";
     submitting.value = false;

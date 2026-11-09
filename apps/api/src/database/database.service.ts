@@ -26,6 +26,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       }
       await this.applySchema('passenger.sql');
       await this.applySchema('driver.sql');
+      await this.applySchema('vehicle.sql');
       this.logger.log(`Connected to database ${name}`);
     } catch (error) {
       await this.pool.end();

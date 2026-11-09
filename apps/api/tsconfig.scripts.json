@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": ["scripts/**/*.ts", "src/vehicles/car-image-request.ts", "src/database/onesoon-env-file.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -45,3 +45,7 @@ ALTER TABLE driver ADD CONSTRAINT driver_vehicle_license_present
 
 CREATE UNIQUE INDEX IF NOT EXISTS driver_id_number_unique
   ON driver (id_number) WHERE id_number IS NOT NULL;
+
+ALTER TABLE trip_order DROP CONSTRAINT IF EXISTS trip_order_driver_fk;
+ALTER TABLE trip_order ADD CONSTRAINT trip_order_driver_fk
+  FOREIGN KEY (driver_id) REFERENCES driver (id);
