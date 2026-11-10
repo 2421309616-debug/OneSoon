@@ -22,6 +22,11 @@ function yuan(cents: number) {
   return (cents / 100).toFixed(0);
 }
 
+function scheduledLabel(value: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value));
+}
+
 async function loadOffers() {
   const driver = requireDriver();
   if (!driver) return;
@@ -86,7 +91,10 @@ onMounted(loadOffers);
           <view class="route-connector" />
           <view class="route-item"><view class="route-dot route-dot--destination">终</view><view class="route-copy"><text class="route-label">目的地 · {{ kilometers(held.distanceMeters) }} km / {{ minutes(held.durationSeconds) }} 分钟</text><text class="route-address">{{ held.destination.name }}</text></view></view>
           <view class="driver-divider" />
-          <view class="offer-meta"><text>乘客 {{ held.passengerName }}</text></view>
+          <view class="offer-meta"><text>乘客 {{ held.passengerName }}</text><text v-if="held.scheduledAt">预约 {{ scheduledLabel(held.scheduledAt) }}</text></view>
+          <view v-if="held.preferences && (held.preferences.quietRide || held.preferences.smokeFree || held.preferences.trunkNeeded || held.preferences.note)" class="preference-tags">
+            <text v-if="held.preferences.quietRide">安静出行</text><text v-if="held.preferences.smokeFree">无烟车辆</text><text v-if="held.preferences.trunkNeeded">需要后备箱</text><text v-if="held.preferences.note">备注：{{ held.preferences.note }}</text>
+          </view>
         </view>
         <template v-else>
           <view v-for="offer in offers" :key="offer.id" class="driver-card offer-card">
@@ -98,7 +106,10 @@ onMounted(loadOffers);
             <view class="route-connector" />
             <view class="route-item"><view class="route-dot route-dot--destination">终</view><view class="route-copy"><text class="route-label">目的地 · {{ kilometers(offer.distanceMeters) }} km / {{ minutes(offer.durationSeconds) }} 分钟</text><text class="route-address">{{ offer.destination.name }}</text></view></view>
             <view class="driver-divider" />
-            <view class="offer-meta"><text>乘客 {{ offer.passengerName }}</text></view>
+            <view class="offer-meta"><text>乘客 {{ offer.passengerName }}</text><text v-if="offer.scheduledAt">预约 {{ scheduledLabel(offer.scheduledAt) }}</text></view>
+            <view v-if="offer.preferences && (offer.preferences.quietRide || offer.preferences.smokeFree || offer.preferences.trunkNeeded || offer.preferences.note)" class="preference-tags">
+              <text v-if="offer.preferences.quietRide">安静出行</text><text v-if="offer.preferences.smokeFree">无烟车辆</text><text v-if="offer.preferences.trunkNeeded">需要后备箱</text><text v-if="offer.preferences.note">备注：{{ offer.preferences.note }}</text>
+            </view>
             <view class="offer-actions">
               <button class="driver-secondary" @tap="decline(offer)">暂不接</button>
               <button class="driver-primary" :disabled="acceptingId === offer.id" @tap="accept(offer)">{{ acceptingId === offer.id ? "接单中" : "接单" }}</button>
@@ -117,6 +128,7 @@ onMounted(loadOffers);
 .dispatch-scroll { flex: 1; min-height: 0; }
 .dispatch-intro { padding: 2px 2px 14px; }
 .offer-card { padding: 15px; }
+.preference-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; color: #737987; font-size: 11px; }
 .offer-id { display: block; margin-top: 6px; color: #737987; font-size: 11px; }
 .offer-fare { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; color: #737987; font-size: 10px; }
 .offer-fare strong { color: #c5222d; font-size: 21px; }

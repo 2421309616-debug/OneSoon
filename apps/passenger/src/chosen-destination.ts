@@ -13,12 +13,20 @@ export function saveChosenDestination(place: ChosenDestination) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(place));
 }
 
+export function clearChosenDestination() {
+  sessionStorage.removeItem(STORAGE_KEY);
+}
+
 export function readChosenDestination(): ChosenDestination | null {
   return readPlace(STORAGE_KEY);
 }
 
 export function saveChosenPickup(place: ChosenPickup) {
   sessionStorage.setItem(PICKUP_KEY, JSON.stringify(place));
+}
+
+export function clearChosenPickup() {
+  sessionStorage.removeItem(PICKUP_KEY);
 }
 
 export function readChosenPickup(): ChosenPickup | null {

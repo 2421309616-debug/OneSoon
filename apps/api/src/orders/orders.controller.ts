@@ -10,6 +10,16 @@ export class OrdersController {
     return this.orders.create(id, body);
   }
 
+  @Get()
+  all(@Param('id') id: string) {
+    return this.orders.allForPassenger(id);
+  }
+
+  @Get('upcoming')
+  upcoming(@Param('id') id: string) {
+    return this.orders.upcomingForPassenger(id);
+  }
+
   @Get('current')
   current(@Param('id') id: string) {
     return this.orders.current(id);

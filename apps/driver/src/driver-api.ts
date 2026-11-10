@@ -69,6 +69,14 @@ export type DispatchOrder = {
   durationSeconds: number;
   fareCents: number;
   createdAt: string;
+  scheduledAt: string | null;
+  riderName: string | null;
+  preferences: {
+    quietRide?: boolean;
+    smokeFree?: boolean;
+    trunkNeeded?: boolean;
+    note?: string;
+  };
   driver: { name: string | null; vehicleModel: string | null; plate: string | null } | null;
 };
 

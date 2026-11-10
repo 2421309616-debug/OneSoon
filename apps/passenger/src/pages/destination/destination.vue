@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onUnmounted, ref, watch } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { computed, onUnmounted, ref, watch } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { listPlaceSearches, recordPlaceSearch, type PlaceSearch } from "@/passenger-api";
-import { saveChosenDestination } from "@/chosen-destination";
+import { saveChosenDestination, saveChosenPickup } from "@/chosen-destination";
 import { fengduPlaces } from "@/fengdu-places";
 import { searchPlaceTips, type PlaceTip } from "@/passenger-places";
 import { requirePassenger } from "@/passenger-session";
@@ -11,9 +11,15 @@ const query = ref("");
 const places = ref<PlaceSearch[]>([]);
 const tips = ref<PlaceTip[]>([]);
 const passengerId = ref("");
+const mode = ref<"pickup" | "destination">("destination");
+const placeTitle = computed(() => mode.value === "pickup" ? "选择上车点" : "你想去哪儿");
 let searchTicket = 0;
 let searchTimer = 0;
 let chosenName = "";
+
+onLoad((query) => {
+  mode.value = query?.mode === "pickup" ? "pickup" : "destination";
+});
 
 onShow(() => {
   const passenger = requirePassenger();
@@ -64,11 +70,17 @@ function chooseTip(tip: PlaceTip) {
   searchTicket += 1;
   const id = passengerId.value;
   if (tip.longitude === null || tip.latitude === null) return;
-  saveChosenDestination({
+  const chosen = {
     name: tip.name,
     longitude: tip.longitude,
     latitude: tip.latitude,
-  });
+  };
+  if (mode.value === "pickup") {
+    saveChosenPickup(chosen);
+    uni.navigateBack({ fail: () => uni.reLaunch({ url: "/pages/home/home" }) });
+    return;
+  }
+  saveChosenDestination(chosen);
   if (id && tip.placeId) {
     recordPlaceSearch(id, {
       placeId: tip.placeId,
@@ -105,9 +117,9 @@ function backHome() {
       class="query"
       type="text"
       confirm-type="search"
-      placeholder="你想去哪儿"
+      :placeholder="placeTitle"
       placeholder-class="placeholder"
-      aria-label="你想去哪儿"
+      :aria-label="placeTitle"
       :focus="true"
     />
     <view v-if="tips.length" class="suggest">

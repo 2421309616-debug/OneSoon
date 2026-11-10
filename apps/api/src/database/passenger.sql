@@ -62,6 +62,11 @@ CREATE TABLE IF NOT EXISTS trip_order (
 
 ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS driver_id text;
 ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS accepted_at timestamptz;
+ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
+ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS is_reservation boolean NOT NULL DEFAULT false;
+ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS rider_name text;
+ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS rider_phone text;
+ALTER TABLE trip_order ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 ALTER TABLE trip_order DROP CONSTRAINT IF EXISTS trip_order_status_known;
 ALTER TABLE trip_order ADD CONSTRAINT trip_order_status_known
@@ -73,8 +78,10 @@ ALTER TABLE trip_order ADD CONSTRAINT trip_order_accepted_matches
 
 DROP INDEX IF EXISTS trip_order_one_waiting_per_passenger;
 
+DROP INDEX IF EXISTS trip_order_one_active_per_passenger;
 CREATE UNIQUE INDEX IF NOT EXISTS trip_order_one_active_per_passenger
-  ON trip_order (passenger_id) WHERE status IN ('waiting', 'accepted');
+  ON trip_order (passenger_id)
+  WHERE status = 'accepted' OR (status = 'waiting' AND is_reservation = false);
 
 CREATE UNIQUE INDEX IF NOT EXISTS trip_order_one_accepted_per_driver
   ON trip_order (driver_id) WHERE status = 'accepted';

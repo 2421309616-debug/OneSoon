@@ -3,8 +3,9 @@ import { getCurrentInstance, nextTick, onUnmounted, ref } from "vue";
 import { onReady, onShow } from "@dcloudio/uni-app";
 import BottomNav from "@/components/BottomNav.vue";
 import MiniAppGrid from "@/components/MiniAppGrid.vue";
-import { saveChosenPickup } from "@/chosen-destination";
+import { readChosenPickup, saveChosenPickup } from "@/chosen-destination";
 import { fetchCurrentOrder } from "@/passenger-api";
+import { clearRideOptions } from "@/passenger-ride-settings";
 import { mountPassengerMap } from "@/passenger-map";
 import { requirePassenger } from "@/passenger-session";
 
@@ -15,6 +16,7 @@ const pinLifted = ref(false);
 onShow(() => {
   const passenger = requirePassenger();
   if (!passenger) return;
+  pickupName.value = readChosenPickup()?.name ?? "";
   fetchCurrentOrder(passenger.id)
     .then(({ order }) => {
       if (order?.status === "waiting") uni.reLaunch({ url: "/pages/waiting/waiting" });
@@ -56,6 +58,7 @@ let measurementVersion = 0;
 let followingCard = false;
 let sheetElement: HTMLElement | null = null;
 let destroyMap: (() => void) | undefined;
+let locateCurrent: (() => void) | undefined;
 let removePointerListeners: (() => void) | undefined;
 const animationFrames = new Set<number>();
 
@@ -116,7 +119,27 @@ async function openDestination() {
   } finally {
     openingDestination = false;
   }
+  clearRideOptions();
   uni.navigateTo({ url: "/pages/destination/destination" });
+}
+
+function openRideOptions(mode: "appointment" | "someone") {
+  const passenger = requirePassenger();
+  if (!passenger) return;
+  uni.navigateTo({ url: `/pages/ride-options/ride-options?mode=${mode}` });
+}
+
+function openPickupSelector() {
+  if (!requirePassenger()) return;
+  uni.navigateTo({ url: "/pages/destination/destination?mode=pickup" });
+}
+
+function locatePickup() {
+  if (!locateCurrent) {
+    uni.showToast({ title: "地图正在加载，请稍候", icon: "none" });
+    return;
+  }
+  locateCurrent();
 }
 
 function markerScreenY() {
@@ -285,7 +308,10 @@ onReady(() => {
             saveChosenPickup(place);
           },
         );
-        map.locate(pinY.value);
+        locateCurrent = () => map.locate(pinY.value, () => {
+          uni.showToast({ title: "定位失败，请检查浏览器定位权限", icon: "none" });
+        });
+        locateCurrent();
       });
     }
   });
@@ -384,6 +410,7 @@ function onTouchEnd() {
 
 onUnmounted(() => {
   destroyMap?.();
+  locateCurrent = undefined;
   disposed = true;
   measurementVersion++;
   stopGesture();
@@ -403,6 +430,13 @@ onUnmounted(() => {
         <text class="brand-en">OneSoon</text>
       </view>
       <view class="map-slot" aria-label="地图展示区域"></view>
+      <button class="locate-button" aria-label="定位到当前位置" hover-class="locate-button--pressed" @tap="locatePickup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="7" />
+          <circle cx="12" cy="12" r="2" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+        </svg>
+      </button>
       <view v-if="pinY" class="pickup-pin" :style="{ top: `${pinY}px` }" aria-hidden="true">
         <view class="pickup-pin-body" :class="{ 'is-lifted': pinLifted }">
           <view class="pickup-pin-head"></view>
@@ -426,13 +460,20 @@ onUnmounted(() => {
         :class="{ 'is-pinned': cardShift > 0.5 }"
         :style="{ transform: `translateY(${cardShift}px)` }"
       >
-        <view class="pickup">
+        <view class="pickup" role="button" hover-class="pickup--pressed" @tap="openPickupSelector">
           <view class="pickup-dot" aria-hidden="true"></view>
           <text class="pickup-text">{{ pickupName || "请选择上车点" }}</text>
+          <view class="pickup-action" aria-hidden="true">
+            <text class="pickup-change">更改</text>
+            <svg class="pickup-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5" /></svg>
+          </view>
         </view>
 
         <view class="field">
-          <text class="field-label">目的地</text>
+          <view class="field-label">
+            <view class="field-label-dot" aria-hidden="true"></view>
+            <text>目的地</text>
+          </view>
           <view class="field-box" role="button" hover-class="field-box--pressed" @tap="openDestination">
             <image class="search-icon" src="/static/icons/search.svg" mode="aspectFit" aria-hidden="true" />
             <text class="field-placeholder">输入目的地</text>
@@ -440,11 +481,11 @@ onUnmounted(() => {
         </view>
 
         <view class="actions">
-          <button class="action" role="button" hover-class="action--pressed">
+          <button class="action" role="button" hover-class="action--pressed" @tap="openRideOptions('appointment')">
             <image class="action-icon" src="/static/icons/clock.svg" mode="aspectFit" aria-hidden="true" />
             <text class="action-label">预约</text>
           </button>
-          <button class="action action--split" role="button" hover-class="action--pressed">
+          <button class="action action--split" role="button" hover-class="action--pressed" @tap="openRideOptions('someone')">
             <image class="action-icon" src="/static/icons/person.svg" mode="aspectFit" aria-hidden="true" />
             <text class="action-label">帮人叫车</text>
           </button>
@@ -540,6 +581,28 @@ onUnmounted(() => {
   height: 100%;
   background: #e8eaed;
 }
+
+.locate-button {
+  position: absolute;
+  z-index: 4;
+  top: calc(54px + var(--app-safe-top));
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #3c4149;
+  box-shadow: 0 2px 8px rgba(26, 26, 26, 0.16);
+}
+
+.locate-button::after { border: 0; }
+.locate-button svg { width: 22px; height: 22px; }
+.locate-button--pressed { background: #f2f3f5; }
 
 .map-slot :deep(.amap-logo) {
   top: calc(12px + var(--app-safe-top)) !important;
@@ -769,6 +832,9 @@ onUnmounted(() => {
   margin-bottom: 12rpx;
 }
 
+.pickup { cursor: pointer; }
+.pickup--pressed { opacity: .72; }
+
 .pickup-dot {
   width: 16rpx;
   height: 16rpx;
@@ -778,7 +844,7 @@ onUnmounted(() => {
 }
 
 .pickup-text {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -789,13 +855,44 @@ onUnmounted(() => {
   line-height: 1.2;
 }
 
+.pickup-change {
+  flex: none;
+  color: #d0121a;
+  font-size: 12px;
+}
+
+.pickup-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  color: #d0121a;
+}
+
+.pickup-arrow {
+  width: 14px;
+  height: 14px;
+}
+
 .field-label {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
   margin-bottom: 8rpx;
   color: #3c4149;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 20px;
+}
+
+.field-label-dot {
+  display: block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2db878;
 }
 
 .field-box {

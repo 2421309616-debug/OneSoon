@@ -94,6 +94,10 @@ export type TripOrder = {
   durationSeconds: number;
   fareCents: number;
   createdAt: string;
+  scheduledAt: string | null;
+  riderName: string | null;
+  riderPhone: string | null;
+  preferences: RidePreferences;
   driver: {
     name: string | null;
     vehicleModel: string | null;
@@ -103,6 +107,13 @@ export type TripOrder = {
   } | null;
 };
 
+export type RidePreferences = {
+  quietRide?: boolean;
+  smokeFree?: boolean;
+  trunkNeeded?: boolean;
+  note?: string;
+};
+
 export function placeOrder(
   passengerId: string,
   trip: {
@@ -110,9 +121,21 @@ export function placeOrder(
     destination: TripPlace;
     distanceMeters: number;
     durationSeconds: number;
+    scheduledAt?: string | null;
+    riderName?: string | null;
+    riderPhone?: string | null;
+    preferences?: RidePreferences;
   },
 ) {
   return requestJson<TripOrder>(`/passengers/${passengerId}/orders`, "POST", trip);
+}
+
+export function listPassengerOrders(passengerId: string) {
+  return requestJson<{ orders: TripOrder[] }>(`/passengers/${passengerId}/orders`, "GET");
+}
+
+export function listUpcomingOrders(passengerId: string) {
+  return requestJson<{ orders: TripOrder[] }>(`/passengers/${passengerId}/orders/upcoming`, "GET");
 }
 
 export function fetchCurrentOrder(passengerId: string) {

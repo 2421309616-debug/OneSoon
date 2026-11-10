@@ -33,7 +33,18 @@ export type TripOrder = {
   durationSeconds: number;
   fareCents: number;
   createdAt: string;
+  scheduledAt: string | null;
+  riderName: string | null;
+  riderPhone: string | null;
+  preferences: RidePreferences;
   driver: AssignedDriver | null;
+};
+
+export type RidePreferences = {
+  quietRide?: boolean;
+  smokeFree?: boolean;
+  trunkNeeded?: boolean;
+  note?: string;
 };
 
 type TripOrderRow = {
@@ -50,6 +61,10 @@ type TripOrderRow = {
   duration_seconds: number;
   fare_cents: number;
   created_at: Date;
+  scheduled_at: Date | null;
+  rider_name: string | null;
+  rider_phone: string | null;
+  preferences: RidePreferences;
   driver_id: string | null;
   driver_name: string | null;
   driver_vehicle_model: string | null;
@@ -74,6 +89,7 @@ const ORDER_SELECT = `SELECT o.id, o.status, p.nickname AS passenger_name,
   o.pickup_name, o.pickup_longitude, o.pickup_latitude,
   o.destination_name, o.destination_longitude, o.destination_latitude,
   o.distance_meters, o.duration_seconds, o.fare_cents, o.created_at,
+  o.scheduled_at, o.rider_name, o.rider_phone, o.preferences,
   d.id AS driver_id, d.name AS driver_name, d.vehicle_model AS driver_vehicle_model,
   d.plate AS driver_plate, d.photo AS driver_photo,
   vehicle_option.id AS vehicle_option_id, vehicle_option.image_file AS vehicle_image_file
@@ -88,7 +104,7 @@ export class OrdersService {
     const trip = requireTrip(body);
     await this.requirePassenger(id);
 
-    const existing = await this.findActive(id);
+    const existing = trip.isReservation ? null : await this.findActive(id);
     if (existing) return existing;
 
     try {
@@ -96,8 +112,9 @@ export class OrdersService {
         `INSERT INTO trip_order
            (passenger_id, pickup_name, pickup_longitude, pickup_latitude,
             destination_name, destination_longitude, destination_latitude,
-            distance_meters, duration_seconds, fare_cents)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            distance_meters, duration_seconds, fare_cents,
+            scheduled_at, is_reservation, rider_name, rider_phone, preferences)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          RETURNING id`,
         [
           id,
@@ -110,6 +127,11 @@ export class OrdersService {
           trip.distanceMeters,
           trip.durationSeconds,
           FARE_CENTS,
+          trip.scheduledAt,
+          trip.isReservation,
+          trip.riderName,
+          trip.riderPhone,
+          JSON.stringify(trip.preferences),
         ],
       );
       const created = inserted.rows[0];
@@ -131,11 +153,37 @@ export class OrdersService {
     return { order: await this.findActive(id) };
   }
 
+  async allForPassenger(passengerId: string): Promise<{ orders: TripOrder[] }> {
+    const id = requirePassengerId(passengerId);
+    await this.requirePassenger(id);
+    const result = await this.database.query<TripOrderRow>(
+      `${ORDER_SELECT}
+       WHERE o.passenger_id = $1
+       ORDER BY o.created_at DESC, o.id DESC`,
+      [id],
+    );
+    return { orders: result.rows.map(toOrder) };
+  }
+
+  async upcomingForPassenger(passengerId: string): Promise<{ orders: TripOrder[] }> {
+    const id = requirePassengerId(passengerId);
+    await this.requirePassenger(id);
+    const result = await this.database.query<TripOrderRow>(
+      `${ORDER_SELECT}
+       WHERE o.passenger_id = $1 AND o.is_reservation = true
+         AND o.scheduled_at > now() AND o.status = 'waiting'
+       ORDER BY o.scheduled_at ASC, o.id ASC`,
+      [id],
+    );
+    return { orders: result.rows.map(toOrder) };
+  }
+
   async waitingForDriver(driverId: string): Promise<{ orders: TripOrder[] }> {
     await this.requireDriver(driverId);
     const result = await this.database.query<TripOrderRow>(
       `${ORDER_SELECT}
        WHERE o.status = 'waiting'
+         AND (o.is_reservation = false OR o.scheduled_at <= now())
        ORDER BY o.created_at ASC, o.id ASC`,
     );
     return { orders: result.rows.map(toOrder) };
@@ -214,7 +262,8 @@ export class OrdersService {
   private async findActive(passengerId: string): Promise<TripOrder | null> {
     const result = await this.database.query<TripOrderRow>(
       `${ORDER_SELECT}
-       WHERE o.passenger_id = $1 AND o.status IN ('waiting', 'accepted')`,
+       WHERE o.passenger_id = $1 AND o.status IN ('waiting', 'accepted')
+         AND (o.is_reservation = false OR o.scheduled_at <= now())`,
       [passengerId],
     );
     const row = result.rows[0];
@@ -252,7 +301,7 @@ function toOrder(row: TripOrderRow): TripOrder {
   return {
     id: row.id,
     status: row.status,
-    passengerName: row.passenger_name,
+    passengerName: row.rider_name?.trim() || row.passenger_name,
     pickup: {
       name: row.pickup_name,
       longitude: row.pickup_longitude,
@@ -267,6 +316,10 @@ function toOrder(row: TripOrderRow): TripOrder {
     durationSeconds: row.duration_seconds,
     fareCents: row.fare_cents,
     createdAt: row.created_at.toISOString(),
+    scheduledAt: row.scheduled_at?.toISOString() ?? null,
+    riderName: row.rider_name,
+    riderPhone: row.rider_phone,
+    preferences: row.preferences ?? {},
     driver: row.status === 'accepted'
       ? {
           name: row.driver_name,
@@ -288,6 +341,11 @@ function requireTrip(body: unknown): {
   destination: Place;
   distanceMeters: number;
   durationSeconds: number;
+  scheduledAt: Date | null;
+  isReservation: boolean;
+  riderName: string | null;
+  riderPhone: string | null;
+  preferences: RidePreferences;
 } {
   if (typeof body !== 'object' || body === null) {
     throw new BadRequestException('请提供上车点和目的地');
@@ -301,11 +359,64 @@ function requireTrip(body: unknown): {
   if (!isWholeNumber(value.durationSeconds, 1, 86_400)) {
     throw new BadRequestException('路线时长不正确');
   }
+  const scheduledAt = optionalScheduledAt(value.scheduledAt);
+  const riderName = optionalText(value.riderName, 60, '乘车人姓名');
+  const riderPhone = optionalText(value.riderPhone, 20, '乘车人手机号');
+  if ((riderName && !riderPhone) || (!riderName && riderPhone)) {
+    throw new BadRequestException('请同时填写乘车人姓名和手机号');
+  }
+  if (riderPhone && !/^[+\d\-\s]{6,20}$/.test(riderPhone)) {
+    throw new BadRequestException('乘车人手机号格式不正确');
+  }
+  const preferences = requirePreferences(value.preferences);
   return {
     pickup,
     destination,
     distanceMeters: value.distanceMeters,
     durationSeconds: value.durationSeconds,
+    scheduledAt,
+    isReservation: scheduledAt !== null,
+    riderName,
+    riderPhone,
+    preferences,
+  };
+}
+
+function optionalScheduledAt(value: unknown): Date | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string') throw new BadRequestException('预约时间格式不正确');
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime()) || date.getTime() < Date.now() + 10 * 60_000) {
+    throw new BadRequestException('预约时间至少需要提前 10 分钟');
+  }
+  return date;
+}
+
+function optionalText(value: unknown, maxLength: number, label: string): string | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || value.trim().length === 0 || value.trim().length > maxLength) {
+    throw new BadRequestException(`${label}格式不正确`);
+  }
+  return value.trim();
+}
+
+function requirePreferences(value: unknown): RidePreferences {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new BadRequestException('乘车偏好格式不正确');
+  }
+  const input = value as Record<string, unknown>;
+  const note = optionalText(input.note, 100, '备注');
+  for (const key of ['quietRide', 'smokeFree', 'trunkNeeded']) {
+    if (input[key] !== undefined && typeof input[key] !== 'boolean') {
+      throw new BadRequestException('乘车偏好格式不正确');
+    }
+  }
+  return {
+    quietRide: input.quietRide === true,
+    smokeFree: input.smokeFree === true,
+    trunkNeeded: input.trunkNeeded === true,
+    ...(note ? { note } : {}),
   };
 }
 

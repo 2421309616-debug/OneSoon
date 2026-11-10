@@ -72,7 +72,7 @@ declare global {
 
 export async function mountPassengerMap(container: HTMLElement): Promise<{
   destroy: () => void;
-  locate: (screenY: number) => void;
+  locate: (screenY: number, onError?: () => void) => void;
   watchPickup: (
     getScreenY: () => number,
     onLift: () => void,
@@ -194,7 +194,7 @@ export async function mountPassengerMap(container: HTMLElement): Promise<{
       map.destroy();
       host.remove();
     },
-    locate: (screenY) => {
+    locate: (screenY, onError = () => {}) => {
       const geolocation = new AMap.Geolocation({
         enableHighAccuracy: true,
         timeout: 10000,
@@ -207,7 +207,10 @@ export async function mountPassengerMap(container: HTMLElement): Promise<{
       });
       map.addControl(geolocation);
       geolocation.getCurrentPosition((status, result) => {
-        if (status !== "complete") return;
+        if (status !== "complete") {
+          onError();
+          return;
+        }
         centerAt([result.position.getLng(), result.position.getLat()], screenY);
         void pickAt(screenY);
       });
