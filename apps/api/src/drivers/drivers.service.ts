@@ -208,6 +208,26 @@ export class DriversService {
     return { accepted: true };
   }
 
+  /**
+   * 出车 / 收车。
+   *
+   * 只有 `status = 'online'` 的司机参与派单。收车时不动位置 ——
+   * 位置是「最后一次已知坐标」，下次出车如果定位失败还能兜底。
+   */
+  async setStatus(driverId: string, body: unknown): Promise<{ online: boolean }> {
+    const id = requireDriverId(driverId);
+    const online = (body as { online?: unknown } | null)?.online;
+    if (typeof online !== "boolean") {
+      throw new BadRequestException("online 必须是布尔值");
+    }
+    await this.requireDriver(id);
+    await this.database.query(`UPDATE driver SET status = $2 WHERE id = $1`, [
+      id,
+      online ? "online" : "offline",
+    ]);
+    return { online };
+  }
+
   async profile(driverId: string): Promise<DriverProfile> {
     const id = requireDriverId(driverId);
     const result = await this.database.query<

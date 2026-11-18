@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { OrdersService } from '../orders/orders.service.js';
 import { requireCode, requirePhone } from '../passengers/passengers.service.js';
 import { DriversService } from './drivers.service.js';
@@ -38,9 +38,21 @@ export class DriversController {
     return this.orders.currentForDriver(id);
   }
 
+  /** 司机手上所有进行中的订单（派单策略允许多单并行，最多 3 单） */
+  @Get(':id/orders/active')
+  activeOrders(@Param('id') id: string) {
+    return this.orders.activeForDriver(id);
+  }
+
   @Post(':id/orders/:orderId/accept')
   acceptOrder(@Param('id') id: string, @Param('orderId') orderId: string) {
     return this.orders.accept(id, orderId);
+  }
+
+  /** 司机放弃订单：订单回到等待池，继续派给其他司机 */
+  @Post(':id/orders/:orderId/cancel')
+  cancelOrder(@Param('id') id: string, @Param('orderId') orderId: string) {
+    return this.orders.cancelByDriver(id, orderId);
   }
 
   @Get(':id')
@@ -56,6 +68,12 @@ export class DriversController {
   @Post(':id/vehicle-type')
   setVehicleType(@Param('id') id: string, @Body() body: unknown) {
     return this.drivers.setVehicleType(id, body);
+  }
+
+  /** 出车 / 收车。只有 online 的司机参与派单 */
+  @Put(':id/status')
+  setStatus(@Param('id') id: string, @Body() body: unknown) {
+    return this.drivers.setStatus(id, body);
   }
 
   @Post(':id/profile/personal')

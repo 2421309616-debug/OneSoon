@@ -200,7 +200,11 @@ export function apiAsset(path: string): string {
   return `${API_ROOT}${path}`;
 }
 
-function postAuth<T>(path: string, data?: Record<string, string>, method: "GET" | "POST" = "POST"): Promise<T> {
+function postAuth<T>(
+  path: string,
+  data?: Record<string, unknown>,
+  method: "GET" | "POST" | "PUT" = "POST",
+): Promise<T> {
   return new Promise((resolve, reject) => {
     uni.request({
       url: `${API_ROOT}${path}`,
@@ -229,8 +233,20 @@ export const driverApi = {
     postAuth<{ orders: DispatchOrder[] }>(`/drivers/${driverId}/orders/waiting`, undefined, "GET"),
   currentDispatchOrder: (driverId: string) =>
     postAuth<{ order: DispatchOrder | null }>(`/drivers/${driverId}/orders/current`, undefined, "GET"),
+  /** 司机手上所有进行中的订单（派单策略允许多单并行，最多 3 单） */
+  listActiveOrders: (driverId: string) =>
+    postAuth<{ orders: DispatchOrder[] }>(`/drivers/${driverId}/orders/active`, undefined, "GET"),
   acceptDispatchOrder: (driverId: string, orderId: string) =>
     postAuth<DispatchOrder>(`/drivers/${driverId}/orders/${orderId}/accept`),
+  /** 司机放弃订单：订单回到等待池，继续派给其他司机 */
+  cancelDispatchOrder: (driverId: string, orderId: string) =>
+    postAuth<DispatchOrder>(`/drivers/${driverId}/orders/${orderId}/cancel`),
+  /** 上报位置。出车期间每 10 秒一次，超过 60 秒没上报就不参与派单 */
+  reportDriverLocation: (driverId: string, longitude: number, latitude: number) =>
+    postAuth<{ ok: boolean }>(`/drivers/${driverId}/location`, { longitude, latitude }, "PUT"),
+  /** 出车 / 收车。只有 online 的司机参与派单 */
+  setDriverStatus: (driverId: string, online: boolean) =>
+    postAuth<{ online: boolean }>(`/drivers/${driverId}/status`, { online }, "PUT"),
   completeProfile: (
     driverId: string,
     profile: {

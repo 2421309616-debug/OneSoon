@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import DriverPageHeader from "@/components/DriverPageHeader.vue";
 import { demoEarnings, driverApi } from "@/driver-api";
+import { startLocationReport, stopLocationReport } from "@/driver-location";
+import { readDriver } from "@/driver-session";
 
 const online = ref(false);
 const busy = ref(false);
@@ -12,11 +14,21 @@ const trips = ref(demoEarnings.completedOrders);
 onMounted(async () => {
   online.value = uni.getStorageSync("onesoon-driver-online") === true;
   const enteringFromOffline = !online.value;
+  const driver = readDriver();
+
   if (enteringFromOffline) {
-    try { await driverApi.setAvailability(true); } catch { /* 本地演示状态继续 */ }
+    try {
+      await driverApi.setAvailability(true);
+      // 真正让后端参与派单的是这一条：status = 'online'
+      if (driver) await driverApi.setDriverStatus(driver.id, true);
+    } catch { /* 本地演示状态继续 */ }
     online.value = true;
     uni.setStorageSync("onesoon-driver-online", true);
   }
+
+  // 出车期间每 10 秒上报位置 —— 后端靠它算接驾时间，超过 60 秒没上报就不参与派单
+  if (driver) startLocationReport(driver.id);
+
   try {
     const dashboard = await driverApi.getDashboard();
     if (dashboard) {
@@ -27,10 +39,19 @@ onMounted(async () => {
   } catch { /* 保持演示数据 */ }
 });
 
+onUnmounted(() => {
+  stopLocationReport();
+});
+
 async function goOffline() {
   if (busy.value) return;
   busy.value = true;
-  try { await driverApi.setAvailability(false); } catch { /* 本地收车状态继续 */ }
+  stopLocationReport();
+  const driver = readDriver();
+  try {
+    await driverApi.setAvailability(false);
+    if (driver) await driverApi.setDriverStatus(driver.id, false);
+  } catch { /* 本地收车状态继续 */ }
   uni.setStorageSync("onesoon-driver-online", false);
   busy.value = false;
   uni.redirectTo({ url: "/pages/home/home" });
