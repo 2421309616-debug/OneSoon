@@ -83,5 +83,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS trip_order_one_active_per_passenger
   ON trip_order (passenger_id)
   WHERE status = 'accepted' OR (status = 'waiting' AND is_reservation = false);
 
-CREATE UNIQUE INDEX IF NOT EXISTS trip_order_one_accepted_per_driver
-  ON trip_order (driver_id) WHERE status = 'accepted';
+-- 司机可以同时持有最多 3 单进行中的订单（派单策略 §4.1「不超载」），
+-- 所以「一个司机只能有一笔 accepted」的唯一索引必须去掉。
+-- 上限由调度算法保证（`maxActiveOrders`），不由数据库保证。
+DROP INDEX IF EXISTS trip_order_one_accepted_per_driver;

@@ -1,0 +1,23 @@
+{
+  "name": "@onesoon/dispatch",
+  "version": "0.1.0",
+  "description": "万顺派单算法库：资格过滤 → 接驾时间分档 → 同档排序取一（纯函数）",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vitest": "^5.1.0"
+  }
+}

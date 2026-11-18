@@ -6,8 +6,17 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 import { requirePassengerId } from '../passengers/passengers.service.js';
+import { DEFAULT_TUNING } from '@onesoon/dispatch';
 
 export const FARE_CENTS = 1000;
+
+/**
+ * 一个司机最多同时持有几单。
+ *
+ * 直接读派单算法里的 `maxActiveOrders`，保证「算法不再推给他」和
+ * 「接口不再让他接」是同一个数字 —— 两边各写一份迟早会对不上。
+ */
+const MAX_ACTIVE_ORDERS = DEFAULT_TUNING.maxActiveOrders;
 
 type Place = {
   name: string;
@@ -178,15 +187,70 @@ export class OrdersService {
     return { orders: result.rows.map(toOrder) };
   }
 
+  /**
+   * 司机端列表：**只返回推给这个司机的订单**。
+   *
+   * 这是派单模式和抢单模式的核心区别 —— 抢单是所有司机看同一个池子、谁快谁得；
+   * 派单是每个司机只看自己的推送，一个订单同一时刻只在一个司机手上。
+   *
+   * 页面还是那个列表，变的是「列表里有什么」。
+   */
   async waitingForDriver(driverId: string): Promise<{ orders: TripOrder[] }> {
     await this.requireDriver(driverId);
     const result = await this.database.query<TripOrderRow>(
       `${ORDER_SELECT}
-       WHERE o.status = 'waiting'
+       JOIN dispatch_offer dsp ON dsp.order_id = o.id
+       WHERE dsp.driver_id = $1
+         AND dsp.status = 'pending'
+         AND dsp.expires_at > now()
+         AND o.status = 'waiting'
          AND (o.is_reservation = false OR o.scheduled_at <= now())
-       ORDER BY o.created_at ASC, o.id ASC`,
+       ORDER BY dsp.created_at ASC, o.id ASC`,
+      [driverId],
     );
     return { orders: result.rows.map(toOrder) };
+  }
+
+  /**
+   * 司机放弃订单：订单回到等待池，继续派给其他司机。
+   *
+   * 和乘客取消不同 —— 乘客取消是订单直接作废，司机放弃只是「换个人接」。
+   * 订单是乘客的，不是司机的；司机不接，乘客还在等，应该继续找下一个。
+   */
+  async cancelByDriver(driverId: string, orderId: string): Promise<TripOrder> {
+    await this.requireDriver(driverId);
+    if (!/^[0-9]{1,18}$/.test(orderId)) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    const result = await this.database.query<{ id: string }>(
+      `UPDATE trip_order
+          SET status = 'waiting', driver_id = NULL, accepted_at = NULL
+        WHERE id = $1 AND driver_id = $2 AND status = 'accepted'
+        RETURNING id`,
+      [orderId, driverId],
+    );
+
+    if (!result.rows[0]) {
+      throw new BadRequestException('订单无法取消');
+    }
+
+    // 这一单的所有推送作废，让调度器重新从第一档开始找。
+    //
+    // 除了 pending，还要把这条 accepted 一起作废 —— 订单已经回到 waiting，
+    // 推送却停在 accepted 就自相矛盾了（`dispatch_offer_responded_matches`
+    // 要求 expired 的 responded_at 必须为空，所以一并清掉）。
+    //
+    // 作废不等于「没推过」：`offeredDriverIds` 查的是这张表的全部记录，
+    // 所以放弃的司机不会被重新推同一单。
+    await this.database.query(
+      `UPDATE dispatch_offer
+          SET status = 'expired', responded_at = NULL
+        WHERE order_id = $1 AND status IN ('pending', 'accepted')`,
+      [orderId],
+    );
+
+    return this.requireOrder(orderId);
   }
 
   async currentForDriver(driverId: string): Promise<{ order: TripOrder | null }> {
@@ -200,44 +264,103 @@ export class OrdersService {
     return { order: row ? toOrder(row) : null };
   }
 
+  /**
+   * 司机手上所有进行中的订单（最多 3 单）。
+   *
+   * 派单策略允许多单并行：司机可以同时接着几笔订单，按自己的节奏跑。
+   * `currentForDriver` 只返回最早那笔，给只关心「当前这一单」的旧调用方用。
+   */
+  async activeForDriver(driverId: string): Promise<{ orders: TripOrder[] }> {
+    await this.requireDriver(driverId);
+    const result = await this.database.query<TripOrderRow>(
+      `${ORDER_SELECT}
+       WHERE o.driver_id = $1 AND o.status = 'accepted'
+       ORDER BY o.accepted_at ASC NULLS LAST, o.id ASC`,
+      [driverId],
+    );
+    return { orders: result.rows.map(toOrder) };
+  }
+
+  /**
+   * 司机接单。
+   *
+   * 派单改成「重叠推送」之后（推送 60 秒有效、每 30 秒再推下一位），
+   * 同一时刻可能有两三个司机都看得到同一单——谁先点谁得，这就是抢单。
+   * 所以这里必须是**事务 + 乐观锁**：
+   *
+   * 1. `SELECT ... FOR UPDATE` 锁住订单行 —— 同一订单的并发请求在这里排队
+   * 2. 后到的人看到 `status` 已经不是 `waiting`，直接抛「已被接走」
+   * 3. `UPDATE ... WHERE status = 'waiting'` 是第二道保险（乐观锁）
+   * 4. 推送状态的更新和订单更新在同一个事务里，不会出现「订单接了、别人那边还挂着 pending」
+   */
   async accept(driverId: string, orderId: string): Promise<TripOrder> {
     await this.requireDriver(driverId);
     if (!/^[0-9]{1,18}$/.test(orderId)) {
       throw new NotFoundException('订单不存在');
     }
-    const held = await this.database.query<{ id: string }>(
-      `SELECT id FROM trip_order WHERE driver_id = $1 AND status = 'accepted'`,
-      [driverId],
-    );
-    const heldId = held.rows[0]?.id;
-    if (heldId && heldId !== orderId) {
-      throw new BadRequestException('请先完成当前订单');
-    }
-    if (heldId === orderId) return this.requireOrder(orderId);
 
-    try {
-      const updated = await this.database.query<{ id: string }>(
-        `UPDATE trip_order
-         SET status = 'accepted', driver_id = $2, accepted_at = now()
-         WHERE id = $1 AND status = 'waiting'
-         RETURNING id`,
+    await this.database.transaction(async (client) => {
+      // 1. 锁订单行，并发接单在此串行化
+      const locked = await client.query<{ status: string; driver_id: string | null }>(
+        `SELECT status, driver_id FROM trip_order WHERE id = $1 FOR UPDATE`,
+        [orderId],
+      );
+      const order = locked.rows[0];
+      if (!order) throw new NotFoundException('订单不存在');
+
+      // 幂等：自己已经接过这一单，直接当成功
+      if (order.status === 'accepted' && order.driver_id === driverId) return;
+      if (order.status === 'accepted') throw new ConflictException('订单已被其他司机接走');
+      if (order.status === 'cancelled') throw new BadRequestException('订单已取消');
+
+      // 2. 必须持有一条有效推送 —— 不能绕过列表按单号硬接
+      const offer = await client.query<{ id: string }>(
+        `SELECT id FROM dispatch_offer
+          WHERE order_id = $1 AND driver_id = $2
+            AND status = 'pending' AND expires_at > now()
+          FOR UPDATE`,
         [orderId, driverId],
       );
-      if (updated.rows[0]) return this.requireOrder(orderId);
-    } catch (error) {
-      if (!isUniqueViolation(error)) throw error;
-      throw new BadRequestException('请先完成当前订单');
-    }
+      if (!offer.rows[0]) {
+        throw new ConflictException('这条推送已失效，请刷新列表');
+      }
 
-    const existing = await this.database.query<{ status: string; driver_id: string | null }>(
-      `SELECT status, driver_id FROM trip_order WHERE id = $1`,
-      [orderId],
-    );
-    const row = existing.rows[0];
-    if (!row) throw new NotFoundException('订单不存在');
-    if (row.status === 'accepted' && row.driver_id === driverId) return this.requireOrder(orderId);
-    if (row.status === 'accepted') throw new ConflictException('订单已被接走');
-    throw new BadRequestException('订单已取消');
+      // 3. 手上不能超过 3 单
+      const held = await client.query<{ count: string }>(
+        `SELECT count(*) AS count FROM trip_order
+          WHERE driver_id = $1 AND status = 'accepted'`,
+        [driverId],
+      );
+      if (Number(held.rows[0]?.count ?? 0) >= MAX_ACTIVE_ORDERS) {
+        throw new BadRequestException(`最多同时持有 ${MAX_ACTIVE_ORDERS} 单`);
+      }
+
+      // 4. 乐观锁：只有仍是 waiting 才更新得动
+      const updated = await client.query<{ id: string }>(
+        `UPDATE trip_order
+            SET status = 'accepted', driver_id = $2, accepted_at = now()
+          WHERE id = $1 AND status = 'waiting'
+          RETURNING id`,
+        [orderId, driverId],
+      );
+      if (!updated.rows[0]) throw new ConflictException('订单已被其他司机接走');
+
+      // 5. 自己的推送置 accepted，同一单其他人手上的推送立刻作废
+      await client.query(
+        `UPDATE dispatch_offer
+            SET status = 'accepted', responded_at = now()
+          WHERE order_id = $1 AND driver_id = $2`,
+        [orderId, driverId],
+      );
+      await client.query(
+        `UPDATE dispatch_offer
+            SET status = 'expired', responded_at = NULL
+          WHERE order_id = $1 AND driver_id <> $2 AND status = 'pending'`,
+        [orderId, driverId],
+      );
+    });
+
+    return this.requireOrder(orderId);
   }
 
   async cancel(passengerId: string, orderId: string): Promise<TripOrder> {
@@ -255,7 +378,19 @@ export class OrdersService {
        RETURNING id`,
       [orderId, id],
     );
-    if (result.rows[0]) return this.requireOrder(orderId);
+    if (result.rows[0]) {
+      // 订单没了，这一单的所有推送立刻作废 —— 否则司机端还会挂 60 秒，
+      // 点「接单」会撞上「订单已取消」，白白打扰一次。
+      // pending 和 accepted 都要作废：后者是接单的那位，订单已经取消，
+      // 他的推送停着 accepted 就自相矛盾了。
+      await this.database.query(
+        `UPDATE dispatch_offer
+            SET status = 'expired', responded_at = NULL
+          WHERE order_id = $1 AND status IN ('pending', 'accepted')`,
+        [orderId],
+      );
+      return this.requireOrder(orderId);
+    }
     throw new NotFoundException('订单不存在');
   }
 
